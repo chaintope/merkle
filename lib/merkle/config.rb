@@ -26,7 +26,44 @@ module Merkle
     # Taptree configuration.
     # @return [Merkle::Config]
     def self.taptree
-      Config.new(leaf_tag: 'TapLeaf', branch_tag: 'TapBranch', sort_hashes: true)
+      Config.new(hash_type: :sha256, leaf_tag: 'TapLeaf', branch_tag: 'TapBranch', sort_hashes: true)
+    end
+
+    def leaf_hash(data)
+      tagged_hash(data, tag_type: :leaf)
+    end
+
+    def branch_hash(data)
+      tagged_hash(data, tag_type: :branch)
+    end
+
+    def tagged_hash(data, tag_type: :branch)
+      raise ArgumentError, "data must be string." unless data.is_a?(String)
+      data = [data].pack('H*') if hex_string?(data)
+
+      tag =  case tag_type
+             when :branch
+               branch_tag
+             when :leaf
+               leaf_tag
+             else
+               raise ArgumentError, "tag_type must be :branch or :leaf"
+             end
+      unless tag.empty?
+        tag_hash = Digest::SHA256.digest(tag)
+        data = tag_hash + tag_hash + data
+      end
+
+      case hash_type
+      when :sha256
+        Digest::SHA256.digest(data)
+      when :double_sha256
+        Digest::SHA256.digest(Digest::SHA256.digest(data))
+      end
+    end
+
+    def hex_string?(data)
+      data.match?(/\A[0-9a-fA-F]+\z/)
     end
   end
 end

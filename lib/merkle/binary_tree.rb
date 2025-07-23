@@ -6,25 +6,14 @@ module Merkle
   # resulting in a vulnerability (CVE-2012-2459).
   class BinaryTree < AbstractTree
 
-    # Compute merkle root
-    # @return [String] merkle root (hex value). For Bitcoin, the endianness of this value must be reversed.
-    def compute_root
-      nodes = leaves
-      while nodes.length > 1
-        nodes = build_next_level(nodes)
-      end
-      root = nodes.first
-      root.match?(/\A[0-9a-fA-F]+\z/) ? root : root.unpack1('H*')
-    end
-
     private
 
     def build_next_level(nodes)
       next_level = []
       nodes = nodes + [nodes.last] if nodes.length.odd?
       nodes.each_slice(2) do |left, right|
-        combined = left + right
-        parent_hash = hash_internal_node(combined)
+        combined = combine(left, right)
+        parent_hash = branch_hash(combined)
         next_level << parent_hash
       end
 
