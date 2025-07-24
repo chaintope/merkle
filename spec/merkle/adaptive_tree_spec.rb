@@ -20,6 +20,7 @@ RSpec.describe Merkle::AdaptiveTree do
     expect(proof.root).to eq('bf5790f5c07064bf0ffd25782122fe774d70f66b5feb914926d9be07bec340fd')
     expect(proof.siblings).to eq([leaves[0], leaves[2]])
     expect(proof.directions).to be_empty
+    expect(proof.valid?).to be true
 
     # four leaves tree.
     #       N0
@@ -31,6 +32,7 @@ RSpec.describe Merkle::AdaptiveTree do
     expect(tree.compute_root).to eq('4036d6059d4573a9928e48cfcde92c1db4252bb6bb4bc62dc0048feb51c6b4cd')
     proof = tree.generate_proof(2)
     expect(proof.siblings).to eq([tree.leaves.last.unpack1('H*'), 'dea6b65c6adddf96f7025001c60c2c2cd64b3dc884c1249fd711623ebb75b151'])
+    expect(proof.valid?).to be true
 
     # five leaves tree.
     #           N0
@@ -45,6 +47,7 @@ RSpec.describe Merkle::AdaptiveTree do
     proof = tree.generate_proof(4)
     expect(proof.leaf).to eq(tree.leaves.last)
     expect(proof.siblings).to eq(['4036d6059d4573a9928e48cfcde92c1db4252bb6bb4bc62dc0048feb51c6b4cd'])
+    expect(proof.valid?).to be true
 
     # six leaves tree.
     #            N0
@@ -59,6 +62,10 @@ RSpec.describe Merkle::AdaptiveTree do
     proof = tree.generate_proof(5)
     expect(proof.leaf).to eq(tree.leaves.last)
     expect(proof.siblings).to eq([tree.leaves[-2].unpack1('H*') ,'4036d6059d4573a9928e48cfcde92c1db4252bb6bb4bc62dc0048feb51c6b4cd'])
+    expect(proof.valid?).to be true
+
+    proof.instance_variable_set(:@siblings, ['4036d6059d4573a9928e48cfcde92c1db4252bb6bb4bc62dc0048feb51c6b4cd', tree.leaves[-2].unpack1('H*')])
+    expect(proof.valid?).to be false
   end
 
   context 'single node' do
@@ -66,6 +73,7 @@ RSpec.describe Merkle::AdaptiveTree do
     it do
       expect(tree.compute_root).to eq('36a39ed285a4ffdb141c16af1eb1029bf18a18a7fdc54c70561d9371714f0c74')
       proof = tree.generate_proof(0)
+      expect(proof.valid?).to be true
       expect(proof.siblings).to be_empty
       expect(proof.directions).to be_empty
       expect{tree.generate_proof(1)}.to raise_error(ArgumentError, 'leaf_index out of range')

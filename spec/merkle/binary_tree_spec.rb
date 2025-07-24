@@ -39,6 +39,7 @@ RSpec.describe Merkle::BinaryTree do
       s5 = 'a020236fd65606dcf110f40bae1884e525619e517d511d4abb84e8d708f12d56'
       expect(proof.siblings).to eq([s1, s2, s3, s4, s5])
       expect(proof.directions).to eq([1, 0, 1, 1, 1])
+      expect(proof.valid?).to be true
     end
 
     context 'single node' do
@@ -48,6 +49,7 @@ RSpec.describe Merkle::BinaryTree do
         proof = tree.generate_proof(0)
         expect(proof.siblings).to be_empty
         expect(proof.directions).to be_empty
+        expect(proof.valid?).to be true
         expect{tree.generate_proof(1)}.to raise_error(ArgumentError, 'leaf_index out of range')
       end
     end

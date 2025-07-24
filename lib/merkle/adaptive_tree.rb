@@ -46,7 +46,7 @@ module Merkle
       next_level = []
       nodes.each_slice(2) do |left, right|
         if right
-          combined = combine(left, right)
+          combined = combine_sorted(config, left, right)
           parent_hash = hash_internal_node(combined)
           next_level << parent_hash
         else

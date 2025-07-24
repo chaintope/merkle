@@ -43,7 +43,7 @@ module Merkle
       next_level = []
       nodes = nodes + [nodes.last] if nodes.length.odd?
       nodes.each_slice(2) do |left, right|
-        combined = combine(left, right)
+        combined = combine_sorted(config, left, right)
         parent_hash = branch_hash(combined)
         next_level << parent_hash
       end

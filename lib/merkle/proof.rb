@@ -1,5 +1,6 @@
 module Merkle
   class Proof
+    include Util
 
     attr_reader :config, :root, :leaf, :siblings, :directions
 
@@ -22,5 +23,29 @@ module Merkle
       @siblings = siblings
       @directions = directions
     end
+
+    # Verify the proof.
+    # @return [Boolean] true if the proof is valid, false otherwise.
+    def valid?
+      current = hex_to_bin(leaf)
+
+      siblings.each_with_index do |sibling, index|
+        sibling_bin = hex_to_bin(sibling)
+        
+        if config.sort_hashes
+          # Sort lexicographically when combining
+          combined = combine_sorted(config, current, sibling_bin)
+        else
+          # Use direction to determine order
+          direction = directions[index]
+          combined = direction == 0 ? sibling_bin + current : current + sibling_bin
+        end
+        
+        current = config.branch_hash(combined)
+      end
+
+      current.unpack1('H*') == root
+    end
+
   end
 end
