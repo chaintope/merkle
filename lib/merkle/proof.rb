@@ -41,7 +41,7 @@ module Merkle
           combined = direction == 0 ? sibling_bin + current : current + sibling_bin
         end
         
-        current = config.branch_hash(combined)
+        current = config.tagged_hash(combined)
       end
 
       current.unpack1('H*') == root
