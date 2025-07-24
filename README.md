@@ -1,39 +1,108 @@
 # Merkle
 
-TODO: Delete this and the text below, and describe your gem
+A Ruby library for Merkle tree construction and proof generation with support for multiple tree structures and hashing algorithms.
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/merkle`. To experiment with that code, run `bin/console` for an interactive prompt.
+## Features
+
+- **Multiple tree structures**: Binary Tree (Bitcoin-compatible) and Adaptive Tree implementations
+- **Flexible configuration**: Support for different hash algorithms (SHA256, Double SHA256) and tagged hashing
+- **Proof generation and verification**: Generate and verify Merkle proofs for any leaf
+- **Sorted hashing support**: Optional lexicographical sorting for deterministic tree construction
 
 ## Installation
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
+Add this line to your application's Gemfile:
 
-Install the gem and add to the application's Gemfile by executing:
+```ruby
+gem 'merkle'
+```
 
-    $ bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+And then execute:
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+    $ bundle install
 
-    $ gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+Or install it yourself as:
+
+    $ gem install merkle
 
 ## Usage
 
-TODO: Write usage instructions here
+### Basic Example
 
-## Development
+```ruby
+require 'merkle'
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+# Create configuration
+config = Merkle::Config.new(hash_type: :sha256)
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+# Prepare leaves (hex strings)
+leaves = [
+  'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3',
+  'b3a8e0e1f9ab1bfe3a36f231f676f78bb30a519d2b21e6c530c0eee8ebb4a5d0',
+  'c3c9bc9a6c7c5b4e8c3b6b5a2a8c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c'
+]
 
-## Contributing
+# Create binary tree (Bitcoin-compatible)
+tree = Merkle::BinaryTree.new(config: config, leaves: leaves)
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/merkle. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/[USERNAME]/merkle/blob/main/CODE_OF_CONDUCT.md).
+# Compute merkle root
+root = tree.compute_root
+puts "Merkle root: #{root}"
 
-## License
+# Generate proof for leaf at index 1
+proof = tree.generate_proof(1)
+puts "Proof siblings: #{proof.siblings}"
+puts "Proof directions: #{proof.directions}"
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+# Verify proof
+puts "Proof valid: #{proof.valid?}"
+```
 
-## Code of Conduct
+### Adaptive Tree Example
 
-Everyone interacting in the Merkle project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/merkle/blob/main/CODE_OF_CONDUCT.md).
+```ruby
+# Create adaptive tree for better performance with frequently accessed leaves
+adaptive_tree = Merkle::AdaptiveTree.new(config: config, leaves: leaves)
+
+root = adaptive_tree.compute_root
+proof = adaptive_tree.generate_proof(0)
+puts "Adaptive tree proof valid: #{proof.valid?}"
+```
+
+### Configuration Options
+
+```ruby
+# Bitcoin-compatible configuration with double SHA256
+bitcoin_config = Merkle::Config.new(hash_type: :double_sha256)
+
+# Configuration with tagged hashing (Taproot-style)
+taproot_config = Merkle::Config.taptree
+
+# Configuration with sorted hashing (no directions needed in proofs)
+sorted_config = Merkle::Config.new(
+  hash_type: :sha256,
+  sort_hashes: true
+)
+```
+
+## Architecture
+
+### Tree Structures
+
+- **BinaryTree**: Bitcoin-compatible merkle tree that duplicates odd nodes
+- **AdaptiveTree**: Unbalanced tree that promotes odd nodes to higher levels for optimized access patterns
+
+### Proof System
+
+The library generates compact Merkle proofs that include:
+- `siblings`: Array of sibling hashes needed for verification
+- `directions`: Array indicating left (0) or right (1) position at each level
+- `root`: The merkle root hash
+- `leaf`: The original leaf value
+
+### Verification
+
+```ruby
+proof = tree.generate_proof(leaf_index)
+is_valid = proof.valid? # Returns true/false
+```
