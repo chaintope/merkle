@@ -26,15 +26,29 @@ RSpec.describe Merkle::BinaryTree do
       "4c841a38f8c12acbd13ab9d54073a56a0d027f7e28a6cb1bf5e038385ec367d8",
       "e4967fcd72010ad69c3763d8e5da5c832820e5ae2b47ba68c55cf44ceaf4ebbc"
     ]}
-    subject {tree.compute_root}
     it do
-      expect(subject).to eq('d3d4a973d5bfc4c13fb99f1f8c555a8a938bce79852a887b47693d3a71faade6')
+      expect(tree.compute_root).to eq('d3d4a973d5bfc4c13fb99f1f8c555a8a938bce79852a887b47693d3a71faade6')
+      proof = tree.generate_proof(2)
+      expect(proof.leaf).to eq('c161a6a8908cadca27adc921379c0bd5b7850087e918dda5b0b99f6652b97ee2')
+      expect(proof.root).to eq('d3d4a973d5bfc4c13fb99f1f8c555a8a938bce79852a887b47693d3a71faade6')
+      expect(proof.siblings.length).to eq(5)
+      s1 = 'd921cae6d9b9d7ef0ce4256961a9d2282980133d891138713a20ab07e7b29622'
+      s2 = '360dd5f78fa05649cb2e48eda2b7ddae5bd027ec8e2e2ec93e9dd9fd20a8fcae'
+      s3 = 'a3b53b65fcef8f39e98e2908c2e19fee22227f2e279c8c9347e03f4dc14c91a5'
+      s4 = 'f25c1d05fa8d7924228097a7b3060bf5b7acd884bc917b70ea0eeaafd0a8f7ba'
+      s5 = 'a020236fd65606dcf110f40bae1884e525619e517d511d4abb84e8d708f12d56'
+      expect(proof.siblings).to eq([s1, s2, s3, s4, s5])
+      expect(proof.directions).to eq([1, 0, 1, 1, 1])
     end
 
     context 'single node' do
       let(:leaves) {['36a39ed285a4ffdb141c16af1eb1029bf18a18a7fdc54c70561d9371714f0c74']}
       it do
-        expect(subject).to eq('36a39ed285a4ffdb141c16af1eb1029bf18a18a7fdc54c70561d9371714f0c74')
+        expect(tree.compute_root).to eq('36a39ed285a4ffdb141c16af1eb1029bf18a18a7fdc54c70561d9371714f0c74')
+        proof = tree.generate_proof(0)
+        expect(proof.siblings).to be_empty
+        expect(proof.directions).to be_empty
+        expect{tree.generate_proof(1)}.to raise_error(ArgumentError, 'leaf_index out of range')
       end
     end
 
@@ -44,6 +58,7 @@ RSpec.describe Merkle::BinaryTree do
         expect{tree.compute_root}.to raise_error(Merkle::Error, 'leaves is empty')
       end
     end
+
   end
 end
 

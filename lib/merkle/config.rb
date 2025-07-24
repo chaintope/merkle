@@ -1,6 +1,7 @@
 module Merkle
   # Merkle tree configuration class.
   class Config
+    include Util
 
     HASH_TYPES = [:sha256, :double_sha256]
 
@@ -60,10 +61,6 @@ module Merkle
       when :double_sha256
         Digest::SHA256.digest(Digest::SHA256.digest(data))
       end
-    end
-
-    def hex_string?(data)
-      data.match?(/\A[0-9a-fA-F]+\z/)
     end
   end
 end

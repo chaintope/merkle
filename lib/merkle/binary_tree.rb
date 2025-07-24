@@ -8,6 +8,37 @@ module Merkle
 
     private
 
+    def siblings_with_directions(leaf_index)
+      siblings = []
+      directions = []
+      
+      current_index = leaf_index
+      nodes = leaves.map {|leaf| hex_to_bin(leaf) }
+      
+      while nodes.length > 1
+        # If odd number of nodes, duplicate the last one
+        nodes << nodes.last if nodes.length.odd?
+        
+        # Determine sibling index and direction (0=left, 1=right)
+        if current_index.even?
+          sibling_index = current_index + 1
+          directions << 1  # sibling is on the right
+        else
+          sibling_index = current_index - 1
+          directions << 0  # sibling is on the left
+        end
+        
+        # Add sibling to the list
+        siblings << nodes[sibling_index]
+        
+        # Move to next level
+        current_index = current_index / 2
+        nodes = build_next_level(nodes)
+      end
+      
+      [siblings, directions]
+    end
+
     def build_next_level(nodes)
       next_level = []
       nodes = nodes + [nodes.last] if nodes.length.odd?
