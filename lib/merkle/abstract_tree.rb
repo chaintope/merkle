@@ -14,7 +14,9 @@ module Merkle
 
     # Compute merkle root
     # @return [String] merkle root (hex value). For Bitcoin, the endianness of this value must be reversed.
+    # @raise [Merkle::Error] If leaves is empty.
     def compute_root
+      raise Error, 'leaves is empty' if leaves.empty?
       nodes = leaves
       while nodes.length > 1
         nodes = build_next_level(nodes)

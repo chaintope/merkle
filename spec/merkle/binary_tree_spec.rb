@@ -37,6 +37,13 @@ RSpec.describe Merkle::BinaryTree do
         expect(subject).to eq('36a39ed285a4ffdb141c16af1eb1029bf18a18a7fdc54c70561d9371714f0c74')
       end
     end
+
+    context 'empty' do
+      let(:leaves) {[]}
+      it do
+        expect{tree.compute_root}.to raise_error(Merkle::Error, 'leaves is empty')
+      end
+    end
   end
 end
 
