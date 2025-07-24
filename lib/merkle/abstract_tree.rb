@@ -60,20 +60,5 @@ module Merkle
     def hash_internal_node(data)
       config.tagged_hash(data)
     end
-
-    # Combine left node ant right node.
-    # If sort_hashes in config enabled, sorted lexicographically then combined.
-    # @param [String] left node value.
-    # @return [String] right node value.
-    # @return [String] combined data.
-    def combine(left, right)
-      if config.sort_hashes
-        lh = left.unpack1('H*')
-        rh = right.unpack1('H*')
-        lh < rh ? left + right : right + left
-      else
-        left + right
-      end
-    end
   end
 end
