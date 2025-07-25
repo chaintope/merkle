@@ -11,11 +11,26 @@ module Merkle
     # @param [Merkle::Config] config Configuration for merkle tree.
     # @param [Array] leaves An array of leaves.
     # @raise [ArgumentError]
-    def initialize(config:, leaves: [])
+    def initialize(config:, leaves: )
       raise ArgumentError, 'config must be Merkle::Config' unless config.is_a?(Merkle::Config)
       raise ArgumentError, 'leaves must be Array' unless leaves.is_a?(Array)
       @config = config
       @leaves = leaves
+    end
+
+    # Create tree from +elements+. For each element in elements,
+    # we compute a tagged hash, which becomes the leaf value.
+    # @param [Merkle::Config] config Configuration for merkle tree.
+    # @param [Array] elements An array of element that will be hashed to become leaves.
+    # @param [String] leaf_tag An optional tag to use when computing the leaf hash.
+    def self.from_elements(config:, elements:, leaf_tag: '')
+      raise ArgumentError, 'config must be Merkle::Config' unless config.is_a?(Merkle::Config)
+      raise ArgumentError, 'elements must be Array' unless elements.is_a?(Array)
+      raise ArgumentError, 'leaf_tag must be string' unless leaf_tag.is_a?(String)
+      leaves = elements.map do |element|
+        config.tagged_hash(element, leaf_tag)
+      end
+      self.new(config: config, leaves: leaves)
     end
 
     # Compute merkle root.

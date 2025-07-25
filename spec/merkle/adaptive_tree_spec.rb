@@ -3,12 +3,12 @@ require 'spec_helper'
 RSpec.describe Merkle::AdaptiveTree do
   let(:config) { Merkle::Config.taptree }
   let(:tag) { 'TapLeaf' }
-  let(:leaves) {[
-    config.tagged_hash('c02220c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5ac', tag),
-    config.tagged_hash('c02220f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9ac', tag),
-    config.tagged_hash('c0222031fe7061656bea2a36aa60a2f7ef940578049273746935d296426dc0afd86b68ac', tag)
-  ].map {|leaf | leaf.unpack1('H*')} }
-  let(:tree) { described_class.new(config: config, leaves: leaves) }
+  let(:elements) {[
+    'c02220c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5ac',
+    'c02220f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9ac',
+    'c0222031fe7061656bea2a36aa60a2f7ef940578049273746935d296426dc0afd86b68ac'
+  ]}
+  let(:tree) { described_class.from_elements(config: config, elements: elements, leaf_tag: tag) }
   it do
     # tree leaves tree.
     #       N0
@@ -19,7 +19,7 @@ RSpec.describe Merkle::AdaptiveTree do
     expect(tree.compute_root).to eq('bf5790f5c07064bf0ffd25782122fe774d70f66b5feb914926d9be07bec340fd')
     proof = tree.generate_proof(1)
     expect(proof.root).to eq('bf5790f5c07064bf0ffd25782122fe774d70f66b5feb914926d9be07bec340fd')
-    expect(proof.siblings).to eq([leaves[0], leaves[2]])
+    expect(proof.siblings).to eq([tree.leaves[0].unpack1('H*'), tree.leaves[2].unpack1('H*')])
     expect(proof.directions).to be_empty
     expect(proof.valid?).to be true
 
@@ -70,6 +70,7 @@ RSpec.describe Merkle::AdaptiveTree do
   end
 
   context 'single node' do
+    let(:tree) { described_class.new(config: config, leaves: leaves) }
     let(:leaves) {['36a39ed285a4ffdb141c16af1eb1029bf18a18a7fdc54c70561d9371714f0c74']}
     it do
       expect(tree.compute_root).to eq('36a39ed285a4ffdb141c16af1eb1029bf18a18a7fdc54c70561d9371714f0c74')
@@ -82,6 +83,7 @@ RSpec.describe Merkle::AdaptiveTree do
   end
 
   context 'empty' do
+    let(:tree) { described_class.new(config: config, leaves: leaves) }
     let(:leaves) {[]}
     it do
       expect{tree.compute_root}.to raise_error(Merkle::Error, 'leaves is empty')
