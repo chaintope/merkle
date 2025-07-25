@@ -35,7 +35,7 @@ require 'merkle'
 # Create configuration
 config = Merkle::Config.new(hash_type: :sha256)
 
-# Prepare leaves (hex strings)
+# Method 1: Using pre-hashed leaves
 leaves = [
   'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3',
   'b3a8e0e1f9ab1bfe3a36f231f676f78bb30a519d2b21e6c530c0eee8ebb4a5d0',
@@ -56,6 +56,35 @@ puts "Proof directions: #{proof.directions}"
 
 # Verify proof
 puts "Proof valid: #{proof.valid?}"
+```
+
+### Using from_elements
+
+```ruby
+# Method 2: Using from_elements to automatically hash raw data
+elements = ['hello', 'world', 'merkle', 'tree']
+
+# Create tree from raw elements
+tree = Merkle::BinaryTree.from_elements(
+  config: config, 
+  elements: elements
+)
+
+# The elements are automatically hashed before building the tree
+root = tree.compute_root
+puts "Root from elements: #{root}"
+
+# With optional leaf tag for tagged hashing (e.g., Taproot)
+taproot_config = Merkle::Config.taptree
+tagged_tree = Merkle::AdaptiveTree.from_elements(
+  config: taproot_config,
+  elements: elements,
+  leaf_tag: 'TapLeaf'  # Optional tag for leaf hashing
+)
+
+# Generate and verify proof
+proof = tree.generate_proof(0)
+puts "Proof for first element valid: #{proof.valid?}"
 ```
 
 ### Adaptive Tree Example
