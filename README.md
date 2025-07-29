@@ -107,10 +107,10 @@ bitcoin_config = Merkle::Config.new(hash_type: :double_sha256)
 # Configuration with tagged hashing (Taproot-style)
 taproot_config = Merkle::Config.taptree
 
-# Configuration with sorted hashing (no directions needed in proofs)
-sorted_config = Merkle::Config.new(
+# Configuration with non-sorted hashing (directions needed in proofs)
+non_sorted_config = Merkle::Config.new(
   hash_type: :sha256,
-  sort_hashes: true
+  sort_hashes: false
 )
 ```
 
