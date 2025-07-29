@@ -69,6 +69,24 @@ RSpec.describe Merkle::AdaptiveTree do
     expect(proof.valid?).to be false
   end
 
+  context 'sorted_hash is false' do
+    let(:config) { Merkle::Config.new(branch_tag: 'TapBranch') }
+    it do
+      expect(tree.compute_root).to eq('bd15f5392eba9089d40af214e87128ea66f195ffdce57715886e455db1ce5689')
+      proof = tree.generate_proof(1)
+      expect(proof.root).to eq('bd15f5392eba9089d40af214e87128ea66f195ffdce57715886e455db1ce5689')
+      expect(proof.siblings).to eq([tree.leaves[0].unpack1('H*'), tree.leaves[2].unpack1('H*')])
+      expect(proof.directions).to eq([0, 1])
+      expect(proof.valid?).to be true
+
+      tree.leaves << config.tagged_hash('c02220a016430f275c30cb15f399aa807cc9bde6b2c4c80c84be3bb27912089c18e363ac', tag)
+      expect(tree.compute_root).to eq('b58a6e62126b098ccea3b4de45d82a8825f1eb3cc47d5a15012e621072704d18')
+      proof = tree.generate_proof(2)
+      expect(proof.directions).to eq([1, 0])
+      expect(proof.valid?).to be true
+    end
+  end
+
   context 'single node' do
     let(:tree) { described_class.new(config: config, leaves: leaves) }
     let(:leaves) {['36a39ed285a4ffdb141c16af1eb1029bf18a18a7fdc54c70561d9371714f0c74']}
