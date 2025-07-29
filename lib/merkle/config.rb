@@ -14,7 +14,7 @@ module Merkle
     # @param [Boolean] sort_hashes Whether to sort internal nodes in lexicographical order and hash them.
     # If you enable this, Merkle::Proof's directions are not required.
     # @raise [ArgumentError]
-    def initialize(hash_type: :sha256, branch_tag: '', sort_hashes: false)
+    def initialize(hash_type: :sha256, branch_tag: '', sort_hashes: true)
       raise ArgumentError, "hash_type #{hash_type} does not supported." unless HASH_TYPES.include?(hash_type)
       raise ArgumentError, "internal_tag must be string." unless branch_tag.is_a?(String)
       raise ArgumentError, "sort_hashes must be boolean." unless sort_hashes.is_a?(TrueClass) || sort_hashes.is_a?(FalseClass)
@@ -26,13 +26,13 @@ module Merkle
     # Bitcoin configuration.
     # @return [Merkle::Config]
     def self.bitcoin
-      Config.new(hash_type: :double_sha256)
+      Config.new(hash_type: :double_sha256, sort_hashes: false)
     end
 
     # Taptree configuration.
     # @return [Merkle::Config]
     def self.taptree
-      Config.new(branch_tag: 'TapBranch', sort_hashes: true)
+      Config.new(branch_tag: 'TapBranch')
     end
 
     # Generate tagged hash.

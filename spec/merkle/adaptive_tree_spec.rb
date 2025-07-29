@@ -70,7 +70,7 @@ RSpec.describe Merkle::AdaptiveTree do
   end
 
   context 'sorted_hash is false' do
-    let(:config) { Merkle::Config.new(branch_tag: 'TapBranch') }
+    let(:config) { Merkle::Config.new(branch_tag: 'TapBranch', sort_hashes: false) }
     it do
       expect(tree.compute_root).to eq('bd15f5392eba9089d40af214e87128ea66f195ffdce57715886e455db1ce5689')
       proof = tree.generate_proof(1)
