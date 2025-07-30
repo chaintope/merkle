@@ -56,7 +56,7 @@ module Merkle
       raise ArgumentError, 'leaf_index out of range' if leaf_index < 0 || leaves.length <= leaf_index
 
       siblings, directions = siblings_with_directions(leaf_index)
-      siblings = siblings.map{|sibling| hex_string?(sibling) ? sibling : sibling.unpack1('H*')}
+      siblings = siblings.map{|sibling| bin_to_hex(sibling) }
       directions = [] if config.sort_hashes
       Proof.new(config: config, root: compute_root, leaf: leaves[leaf_index], siblings: siblings, directions: directions)
     end
