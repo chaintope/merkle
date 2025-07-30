@@ -3,7 +3,8 @@ require 'spec_helper'
 RSpec.describe Merkle::BinaryTree do
 
   describe 'bitcoin compatible' do
-    let(:tree) { described_class.new(config: Merkle::Config.bitcoin, leaves: leaves) }
+    let(:config) { Merkle::Config.bitcoin }
+    let(:tree) { described_class.new(config: config, leaves: leaves) }
     let(:leaves) {[ # tx hash
       "5413f97b08de361a6bb32dbbd20e755499d39ad9870537d340a5393eaba4eb9d",
       "fc8bc019d625305199d825188539571556485f86c85def5d274c8ca9075860f3",
@@ -40,6 +41,24 @@ RSpec.describe Merkle::BinaryTree do
       expect(proof.siblings).to eq([s1, s2, s3, s4, s5])
       expect(proof.directions).to eq([1, 0, 1, 1, 1])
       expect(proof.valid?).to be true
+    end
+
+    context 'sorted_hash is true' do
+      let(:config) { Merkle::Config.new(hash_type: :double_sha256, sort_hashes: true) }
+      let(:leaves) {[
+        "fc8bc019d625305199d825188539571556485f86c85def5d274c8ca9075860f3",
+        "5413f97b08de361a6bb32dbbd20e755499d39ad9870537d340a5393eaba4eb9d",
+        "c161a6a8908cadca27adc921379c0bd5b7850087e918dda5b0b99f6652b97ee2",
+        "d921cae6d9b9d7ef0ce4256961a9d2282980133d891138713a20ab07e7b29622"
+      ]}
+      it do
+        expect(tree.compute_root).to eq('18b7a9383070575b383c48915a9cac56965fa077c3630edbfa3d3631abc7c8e8')
+        proof = tree.generate_proof(1)
+        expect(proof.root).to eq('18b7a9383070575b383c48915a9cac56965fa077c3630edbfa3d3631abc7c8e8')
+        expect(proof.siblings).to eq([tree.leaves[0], '30b9ce14745562e8734c93a4f9b81febd14f3c25d297a01fb69484eeff3f941b'])
+        expect(proof.directions).to be_empty
+        expect(proof.valid?).to be true
+      end
     end
 
     context 'single node' do
