@@ -4,7 +4,7 @@ A Ruby library for Merkle tree construction and proof generation with support fo
 
 ## Features
 
-- **Multiple tree structures**: Binary Tree (Bitcoin-compatible) and Adaptive Tree implementations
+- **Multiple tree structures**: Binary Tree (Bitcoin-compatible), Adaptive Tree, and Custom Tree implementations
 - **Flexible configuration**: Support for different hash algorithms (SHA256, Double SHA256) and tagged hashing
 - **Proof generation and verification**: Generate and verify Merkle proofs for any leaf
 - **Sorted hashing support**: Optional lexicographical sorting for deterministic tree construction
@@ -98,6 +98,32 @@ proof = adaptive_tree.generate_proof(0)
 puts "Adaptive tree proof valid: #{proof.valid?}"
 ```
 
+### Custom Tree Example
+
+```ruby
+# CustomTree allows you to define your own tree structure using nested arrays
+# This gives you precise control over how leaves are grouped
+
+# Example 1: Basic usage with pre-hashed leaves
+leaf_a = config.tagged_hash('A')
+leaf_b = config.tagged_hash('B')
+leaf_c = config.tagged_hash('C')
+leaf_d = config.tagged_hash('D')
+
+# Define structure: [[A, [B, C]], D]
+nested_leaves = [[leaf_a, [leaf_b, leaf_c]], leaf_d]
+custom_tree = Merkle::CustomTree.new(config: config, leaves: nested_leaves)
+
+root = custom_tree.compute_root
+puts "Custom tree root: #{root}"
+
+# Valid structures:
+# - [A, B] → Simple binary node
+# - [[A, B], C] → Left subtree with right leaf
+# - [A] → Single child node
+# Invalid: [A, B, C] → Error (max 2 children per node)
+```
+
 ### Configuration Options
 
 ```ruby
@@ -120,6 +146,7 @@ non_sorted_config = Merkle::Config.new(
 
 - **BinaryTree**: Bitcoin-compatible merkle tree that duplicates odd nodes
 - **AdaptiveTree**: Unbalanced tree that promotes odd nodes to higher levels for optimized access patterns
+- **CustomTree**: User-defined tree structure using nested arrays for precise control over leaf grouping
 
 ### Proof System
 
