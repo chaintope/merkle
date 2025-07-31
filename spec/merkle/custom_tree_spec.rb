@@ -112,7 +112,9 @@ RSpec.describe Merkle::CustomTree do
         # Expected computation:
         # h(B,C) = hash(B || C)
         # h(D,E) = hash(D || E)
-        # root = hash(A || h(B,C) || h(D,E) || F)
+        # h(A, h(B, C)) = hash(A || h(B,C))
+        # h(left) = hash(h(A, h(B, C)) || h(D,E))
+        # root = hash(h(left) || F)
         
         h_bc = config.tagged_hash(leaf_b + leaf_c)
         h_a_bc = config.tagged_hash(leaf_a + h_bc)
@@ -124,13 +126,12 @@ RSpec.describe Merkle::CustomTree do
       end
     end
 
-    context 'with nested structure: ((A, B), (C, (D, E)), F)' do
+    context 'with nested structure: ((A, B), (C, (D, E)))' do
       let(:leaf_a) { config.tagged_hash('A') }
       let(:leaf_b) { config.tagged_hash('B') }
       let(:leaf_c) { config.tagged_hash('C') }
       let(:leaf_d) { config.tagged_hash('D') }
       let(:leaf_e) { config.tagged_hash('E') }
-      let(:leaf_f) { config.tagged_hash('F') }
       let(:nested_leaves) { [[leaf_a, leaf_b], [leaf_c, [leaf_d, leaf_e]]] }
       let(:tree) { described_class.new(config: config, leaves: nested_leaves) }
 
@@ -138,8 +139,8 @@ RSpec.describe Merkle::CustomTree do
         # Expected computation:
         # h(A,B) = hash(A || B)
         # h(D,E) = hash(D || E)
-        # h(C,h(D,E)) = hash(C || h(D,E))
-        # root = hash(h(A,B) || h(C,h(D,E)) || F)
+        # h(right) = hash(C || h(D,E))
+        # root = hash(h(A,B) || h(right))
         
         h_ab = config.tagged_hash(leaf_a + leaf_b)
         h_de = config.tagged_hash(leaf_d + leaf_e)
