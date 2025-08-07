@@ -41,18 +41,20 @@ module Merkle
     # @return [String] Tagged hash value.
     def tagged_hash(data, tag = branch_tag)
       raise ArgumentError, "data must be string." unless data.is_a?(String)
-      data = [data].pack('H*') if hex_string?(data)
+      raise ArgumentError, "tag must be a String." unless tag.is_a?(String)
+
+      data_bin = hex_to_bin(data).b
 
       unless tag.empty?
-        tag_hash = Digest::SHA256.digest(tag)
-        data = tag_hash + tag_hash + data
+        tag_bin = Digest::SHA256.digest(tag).b
+        data_bin = tag_bin + tag_bin + data_bin
       end
 
       case hash_type
       when :sha256
-        Digest::SHA256.digest(data)
+        Digest::SHA256.digest(data_bin)
       when :double_sha256
-        Digest::SHA256.digest(Digest::SHA256.digest(data))
+        Digest::SHA256.digest(Digest::SHA256.digest(data_bin))
       end
     end
   end
