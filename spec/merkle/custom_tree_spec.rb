@@ -263,4 +263,35 @@ RSpec.describe Merkle::CustomTree do
       expect(proof.directions).to eq([0, 0, 1, 1])
     end
   end
+
+  describe '#generate_proof with duplicate leaves' do
+    let(:leaf_dup) { config.tagged_hash('dup') }
+    let(:leaf_b) { config.tagged_hash('B') }
+    let(:leaf_c) { config.tagged_hash('C') }
+    let(:nested_leaves) { [[leaf_dup, leaf_dup], [leaf_b, leaf_c]] }
+    let(:tree) { described_class.new(config: config, leaves: nested_leaves) }
+
+    it 'proves the requested position, not the first leaf with that value' do
+      expect(tree.generate_proof(0).directions).to eq([1, 1])
+      expect(tree.generate_proof(1).directions).to eq([0, 1])
+    end
+
+    it 'generates a valid proof for every index' do
+      expect((0..3).all? { |i| tree.generate_proof(i).valid? }).to be true
+    end
+  end
+
+  describe '#generate_proof with an unbalanced structure' do
+    let(:elements) { ['a', [['b', 'c'], ['d', ['e', 'f']]]] }
+    let(:tree) { described_class.from_elements(config: config, elements: elements) }
+
+    it 'generates a valid proof for every leaf' do
+      expect((0..5).all? { |i| tree.generate_proof(i).valid? }).to be true
+    end
+
+    it 'gives each leaf a distinct proof' do
+      proofs = (0..5).map { |i| tree.generate_proof(i) }
+      expect(proofs.map { |p| [p.siblings, p.directions] }.uniq.length).to eq(6)
+    end
+  end
 end

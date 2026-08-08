@@ -2,12 +2,15 @@ module Merkle
   module Util
 
     # Check whether +data+ is hex string or not.
+    # An odd-length string is not a hex string. Treating it as one would let
+    # +pack('H*')+ pad the missing nibble with zero, so 'abc' and 'abc0' would
+    # collide.
     # @param [String] data
     # @return [Boolean]
     # @raise [ArgumentError]
     def hex_string?(data)
       raise ArgumentError, 'data must be string' unless data.is_a?(String)
-      data.match?(/\A[0-9a-fA-F]+\z/)
+      data.length.even? && data.match?(/\A[0-9a-fA-F]+\z/)
     end
 
     # Convert hex string +data+ to binary.

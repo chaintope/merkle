@@ -129,75 +129,47 @@ module Merkle
     
     # Override siblings_with_directions for proof generation
     def siblings_with_directions(leaf_index)
-      all_leaves = extract_leaves(@leaves)
-      target_leaf = all_leaves[leaf_index]
       siblings = []
       directions = []
-      
-      # Build proof by finding the path to the target leaf
-      proof_path = build_proof_path(@leaves, target_leaf)
-      
-      proof_path.each do |level_info|
-        next if level_info[:siblings].empty?
-        
-        level_info[:siblings].each do |sibling|
-          siblings << sibling[:hash]
-          directions << sibling[:direction]
-        end
-      end
-      
+      collect_path(@leaves, leaf_index, siblings, directions)
       [siblings, directions]
     end
-    
-    # Build the proof path with siblings at each level
-    def build_proof_path(node, target_leaf, path = [])
-      if node.is_a?(Array)
-        # Find which child contains the target
-        node.each_with_index do |child, idx|
-          child_path = build_proof_path(child, target_leaf, path)
-          
-          if child_path
-            # Found the path, now collect siblings at this level
-            level_siblings = []
-            node.each_with_index do |sibling, sibling_idx|
-              next if sibling_idx == idx  # Skip the path we're on
-              
-              sibling_hash = compute_node_hash(sibling)
-              direction = sibling_idx < idx ? 0 : 1
-              level_siblings << { hash: sibling_hash, direction: direction }
-            end
-            
-            return child_path + [{ siblings: level_siblings }]
-          end
-        end
-        nil
+
+    # Walk down the structure toward the leaf at +index+ (counted within +node+), collecting the
+    # sibling hash and its direction at each branch. Siblings are collected deepest first, the
+    # order Proof#valid? folds them in.
+    # The descent is driven by the index rather than by the leaf value, so duplicate leaf hashes
+    # still yield the proof for the requested position.
+    # @param [Object] node A subtree (nested Array) or a leaf hash.
+    # @param [Integer] index The leaf index within +node+.
+    # @param [Array] siblings Collected sibling hashes(binary format).
+    # @param [Array] directions Collected directions(0: left, 1: right).
+    def collect_path(node, index, siblings, directions)
+      return unless node.is_a?(Array)
+
+      if node.length == 1
+        # Single child contributes no sibling, its hash is passed through unchanged.
+        return collect_path(node[0], index, siblings, directions)
+      end
+
+      left, right = node
+      left_leaves = leaf_count(left)
+      if index < left_leaves
+        collect_path(left, index, siblings, directions)
+        siblings << compute_node_hash(right)
+        directions << 1 # sibling is on the right
       else
-        # Leaf node
-        if node == target_leaf
-          []
-        else
-          nil
-        end
+        collect_path(right, index - left_leaves, siblings, directions)
+        siblings << compute_node_hash(left)
+        directions << 0 # sibling is on the left
       end
     end
 
-    # Find the leaf index by searching through the tree
-    def find_leaf_index(node, target_leaf, current_index = [0])
-      if node.is_a?(Array)
-        node.each do |child|
-          result = find_leaf_index(child, target_leaf, current_index)
-          return result if result
-        end
-        nil
-      else
-        # This is a leaf
-        if node == target_leaf
-          current_index[0]
-        else
-          current_index[0] += 1
-          nil
-        end
-      end
+    # Count the leaves under +node+.
+    # @param [Object] node A subtree (nested Array) or a leaf hash.
+    # @return [Integer] Number of leaves.
+    def leaf_count(node)
+      node.is_a?(Array) ? node.sum { |child| leaf_count(child) } : 1
     end
 
     # Not used in custom tree - structure is determined by nested array
