@@ -1,6 +1,9 @@
 module Merkle
   module Util
 
+    # Size of a node hash in bytes. Leaves, siblings and internal nodes are all this size.
+    HASH_SIZE = 32
+
     # Check whether +data+ is hex string or not.
     # An odd-length string is not a hex string. Treating it as one would let
     # +pack('H*')+ pad the missing nibble with zero, so 'abc' and 'abc0' would
@@ -13,13 +16,24 @@ module Merkle
       data.length.even? && data.match?(/\A[0-9a-fA-F]+\z/)
     end
 
-    # Convert hex string +data+ to binary.
-    # @param [String] data
-    # @return [String]
+    # Check whether +hex+ is the hex representation of a node hash.
+    # @param [String] hex
+    # @return [Boolean]
+    def node_hash?(hex)
+      hex.is_a?(String) && hex.length == HASH_SIZE * 2 && hex.match?(/\A[0-9a-fA-F]+\z/)
+    end
+
+    # Convert a node hash from its hex representation to binary.
+    # Node hashes are always +HASH_SIZE+ bytes written as hex, so anything else is rejected
+    # rather than guessed at. Accepting arbitrary lengths here would make the concatenation
+    # in an internal node ambiguous: ['aa', 'bbcc'] and ['aabb', 'cc'] would hash alike.
+    # @param [String] hex
+    # @return [String] Binary format hash.
     # @raise [ArgumentError]
-    def hex_to_bin(data)
-      raise ArgumentError, 'data must be string' unless data.is_a?(String)
-      hex_string?(data) ? [data].pack('H*') : data
+    def decode_hash(hex)
+      raise ArgumentError, 'hash must be string' unless hex.is_a?(String)
+      raise ArgumentError, "hash must be a #{HASH_SIZE * 2}-character hex string" unless node_hash?(hex)
+      [hex].pack('H*')
     end
 
     # Convert binary string +data+ to hex string.
@@ -28,7 +42,7 @@ module Merkle
     # @raise [ArgumentError]
     def bin_to_hex(data)
       raise ArgumentError, 'data must be string' unless data.is_a?(String)
-      hex_string?(data) ? data : data.unpack1('H*')
+      data.unpack1('H*')
     end
 
     # Combine two elements(+left+ and +right+) with sort configuration.

@@ -13,7 +13,7 @@ module Merkle
       directions = []
       
       current_index = leaf_index
-      nodes = leaves.map {|leaf| hex_to_bin(leaf) }
+      nodes = leaves.map {|leaf| decode_hash(leaf) }
       
       while nodes.length > 1
         # If odd number of nodes, duplicate the last one

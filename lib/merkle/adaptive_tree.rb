@@ -12,7 +12,7 @@ module Merkle
       directions = []
       
       current_index = leaf_index
-      nodes = leaves.map {|leaf| hex_to_bin(leaf) }
+      nodes = leaves.map {|leaf| decode_hash(leaf) }
       
       while nodes.length > 1
         # For adaptive tree, odd nodes are promoted to next level

@@ -19,12 +19,14 @@ module Merkle
     def initialize(config:, root:, leaf:, siblings:, directions: [])
       raise ArgumentError, 'config must be a Merkle::Config' unless config.is_a?(Merkle::Config)
       raise ArgumentError, 'root must be string' unless root.is_a?(String)
+      raise ArgumentError, "root must be a #{HASH_SIZE * 2}-character hex string" unless node_hash?(root)
       raise ArgumentError, 'leaf must be string' unless leaf.is_a?(String)
+      raise ArgumentError, "leaf must be a #{HASH_SIZE * 2}-character hex string" unless node_hash?(leaf)
       raise ArgumentError, 'siblings must be an Array' unless siblings.is_a?(Array)
       raise ArgumentError, "siblings must not exceed #{MAX_SIBLINGS} elements" if siblings.length > MAX_SIBLINGS
       siblings.each do |sibling|
         raise ArgumentError, 'sibling must be string' unless sibling.is_a?(String)
-        raise ArgumentError, 'sibling must be a 64-character hex string' unless sibling.match?(/\A[0-9a-fA-F]{64}\z/)
+        raise ArgumentError, "sibling must be a #{HASH_SIZE * 2}-character hex string" unless node_hash?(sibling)
       end
       raise ArgumentError, 'directions must be an Array' unless directions.is_a?(Array)
       raise ArgumentError, 'No directions are required because sorted_hash is enabled' if config.sort_hashes && !directions.empty?
@@ -42,10 +44,10 @@ module Merkle
     # Verify the proof.
     # @return [Boolean] true if the proof is valid, false otherwise.
     def valid?
-      current = hex_to_bin(leaf)
+      current = decode_hash(leaf)
 
       siblings.each_with_index do |sibling, index|
-        sibling_bin = hex_to_bin(sibling)
+        sibling_bin = decode_hash(sibling)
         
         if config.sort_hashes
           # Sort lexicographically when combining

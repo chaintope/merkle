@@ -9,8 +9,6 @@ module Merkle
     #                       Each element can be a leaf hash (hex string) or an array of child nodes.
     def initialize(config:, leaves:)
       super(config: config, leaves: leaves)
-      # Validate nested structure before calling super
-      validate_leaves!(extract_leaves(leaves))
     end
 
     # Create tree from elements with custom structure
@@ -43,7 +41,7 @@ module Merkle
         node.map { |child| convert_elements_to_hashes(child, config, leaf_tag) }
       else
         # This is a leaf element, hash it and convert to hex
-        config.tagged_hash(node, leaf_tag).unpack1('H*')
+        config.tagged_hash(config.encode_element(node), leaf_tag).unpack1('H*')
       end
     end
 
@@ -72,7 +70,7 @@ module Merkle
         end
       else
         # Leaf node: already a hash, convert to binary
-        hex_to_bin(node)
+        decode_hash(node)
       end
     end
 
@@ -107,23 +105,32 @@ module Merkle
       end
     end
 
-    # Validate that all leaves are valid hex strings and structure is binary
-    def validate_leaves!(leaves_to_validate)
-      leaves_to_validate.each do |leaf|
-        raise ArgumentError, "leaf hash must be string." unless leaf.is_a?(String)
-      end
-      validate_binary_structure(@leaves)
+    # Validate that the structure is a binary tree and that every leaf is a node hash.
+    def validate_leaves!
+      validate_binary_structure(@leaves, root: true)
+      extract_leaves(@leaves).each { |leaf| decode_hash(leaf) }
     end
-    
-    # Validate that the structure is a binary tree (max 2 children per node)
-    def validate_binary_structure(node)
-      if node.is_a?(Array)
-        if node.length == 0
-          raise ArgumentError, "Binary tree nodes cannot be empty"
-        elsif node.length > 2
-          raise ArgumentError, "Binary tree nodes can have at most 2 children, got #{node.length}"
+
+    # Validate that the structure is a binary tree (exactly 2 children per node)
+    # @param [Object] node A subtree (nested Array) or a leaf hash.
+    # @param [Boolean] root Whether +node+ is the whole tree.
+    def validate_binary_structure(node, root: false)
+      return unless node.is_a?(Array)
+
+      case node.length
+      when 0
+        raise ArgumentError, "Binary tree nodes cannot be empty"
+      when 1
+        # A node with one child contributes no branch hash, it just passes the child up.
+        # That would let [[a]] and [a, [b]] commit to the same root as [a] and [a, b].
+        # A tree holding a single leaf is the one case where there is nothing to confuse it with.
+        unless root && !node[0].is_a?(Array)
+          raise ArgumentError, "Binary tree nodes must have 2 children unless the tree is a single leaf"
         end
+      when 2
         node.each { |child| validate_binary_structure(child) }
+      else
+        raise ArgumentError, "Binary tree nodes can have at most 2 children, got #{node.length}"
       end
     end
     

@@ -33,7 +33,9 @@ Or install it yourself as:
 require 'merkle'
 
 # Create configuration
-config = Merkle::Config.new(hash_type: :sha256)
+# element_encoding says how the elements passed to .from_elements are read.
+# It has no default: guessing it silently changes the merkle root.
+config = Merkle::Config.new(element_encoding: :binary, hash_type: :sha256)
 
 # Method 1: Using pre-hashed leaves
 leaves = [
@@ -75,7 +77,7 @@ root = tree.compute_root
 puts "Root from elements: #{root}"
 
 # With optional leaf tag for tagged hashing (e.g., Taproot)
-taproot_config = Merkle::Config.taptree
+taproot_config = Merkle::Config.taptree(element_encoding: :binary)
 tagged_tree = Merkle::AdaptiveTree.from_elements(
   config: taproot_config,
   elements: elements,
@@ -105,10 +107,11 @@ puts "Adaptive tree proof valid: #{proof.valid?}"
 # This gives you precise control over how leaves are grouped
 
 # Example 1: Basic usage with pre-hashed leaves
-leaf_a = config.tagged_hash('A')
-leaf_b = config.tagged_hash('B')
-leaf_c = config.tagged_hash('C')
-leaf_d = config.tagged_hash('D')
+# Leaves are always 64-character hex strings, the same form #compute_root returns.
+leaf_a = config.tagged_hash(config.encode_element('A')).unpack1('H*')
+leaf_b = config.tagged_hash(config.encode_element('B')).unpack1('H*')
+leaf_c = config.tagged_hash(config.encode_element('C')).unpack1('H*')
+leaf_d = config.tagged_hash(config.encode_element('D')).unpack1('H*')
 
 # Define structure: [[A, [B, C]], D]
 nested_leaves = [[leaf_a, [leaf_b, leaf_c]], leaf_d]
@@ -120,21 +123,24 @@ puts "Custom tree root: #{root}"
 # Valid structures:
 # - [A, B] → Simple binary node
 # - [[A, B], C] → Left subtree with right leaf
-# - [A] → Single child node
+# - [A] → A tree holding a single leaf
 # Invalid: [A, B, C] → Error (max 2 children per node)
+# Invalid: [[A, B]] → Error (a single-child node just passes its child's hash up,
+#                     so it would commit to the same root as [A, B])
 ```
 
 ### Configuration Options
 
 ```ruby
 # Bitcoin-compatible configuration with double SHA256
-bitcoin_config = Merkle::Config.new(hash_type: :double_sha256)
+bitcoin_config = Merkle::Config.new(element_encoding: :hex, hash_type: :double_sha256)
 
 # Configuration with tagged hashing (Taproot-style)
-taproot_config = Merkle::Config.taptree
+taproot_config = Merkle::Config.taptree(element_encoding: :hex)
 
 # Configuration with non-sorted hashing (directions needed in proofs)
 non_sorted_config = Merkle::Config.new(
+  element_encoding: :binary,
   hash_type: :sha256,
   sort_hashes: false
 )
@@ -162,3 +168,38 @@ The library generates compact Merkle proofs that include:
 proof = tree.generate_proof(leaf_index)
 is_valid = proof.valid? # Returns true/false
 ```
+
+`#valid?` folds `leaf` upwards through `siblings` and compares the result to `root`. It answers
+"do these hashes chain to this root", and nothing more. In particular it does not check that
+`leaf` sits at the bottom of the tree.
+
+**The verifier must derive `leaf` itself.** Hash the data you care about and build the proof
+around that value:
+
+```ruby
+leaf = config.tagged_hash(config.encode_element(my_data), 'MyLeaf').unpack1('H*')
+proof = Merkle::Proof.new(config: config, root: trusted_root, leaf: leaf,
+                          siblings: received_siblings, directions: received_directions)
+proof.valid?
+```
+
+Taking `leaf` from whoever supplied the proof defeats it: any internal node of the tree is a
+value that chains to the root, so it would be accepted as if it were a leaf.
+
+## Security considerations
+
+This library lets you build trees that are not second-preimage resistant, because Bitcoin's
+transaction merkle tree is one of them and cannot be changed. Two properties are left to the
+protocol built on top of it:
+
+- **Domain separation.** Give `leaf_tag` and `branch_tag` different values so that a leaf hash
+  can never equal an internal node hash. With both left empty, an attacker can craft an element
+  whose leaf hash equals an internal node and prove membership of something that was never in
+  the tree. `Config.taptree` sets `branch_tag`, but the leaf tag is yours to pass to
+  `.from_elements`.
+- **Duplicate leaves (CVE-2012-2459).** `BinaryTree` duplicates the last node when a level holds
+  an odd number of them, exactly as Bitcoin does, so `[a, b, c]` and `[a, b, c, c]` share a root.
+  Use `AdaptiveTree` or `CustomTree` if you do not need Bitcoin compatibility.
+
+Element encoding is not left to the protocol: `element_encoding` is required on `Config` so that
+`'hello'` and `'68656c6c6f'` can never resolve to the same leaf.

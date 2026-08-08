@@ -6,36 +6,65 @@ module Merkle
     # Supported Hash type.
     HASH_TYPES = [:sha256, :double_sha256]
 
-    attr_reader :hash_type, :branch_tag, :sort_hashes
+    # How the elements passed to .from_elements are turned into bytes.
+    # :hex    - each element is a hex string and is decoded before hashing.
+    # :binary - each element is already a byte string and is hashed as-is.
+    # There is deliberately no auto-detection: 'hello' and '68656c6c6f' would otherwise
+    # produce the same leaf, and so would 'AB' and 'ab'.
+    ELEMENT_ENCODINGS = [:hex, :binary]
+
+    attr_reader :hash_type, :branch_tag, :sort_hashes, :element_encoding
 
     # Constructor
+    # @param [Symbol] element_encoding How elements are interpreted, :hex or :binary.
+    # This has no default on purpose. Guessing it silently changes the merkle root.
     # @param [Symbol] hash_type The hashing algorithm used to hash the internal nodes.
     # @param [String] branch_tag Tags to use when hashing internal nodes.
     # @param [Boolean] sort_hashes Whether to sort internal nodes in lexicographical order and hash them.
     # If you enable this, Merkle::Proof's directions are not required.
     # @raise [ArgumentError]
-    def initialize(hash_type: :sha256, branch_tag: '', sort_hashes: true)
+    def initialize(element_encoding:, hash_type: :sha256, branch_tag: '', sort_hashes: true)
+      raise ArgumentError, "element_encoding #{element_encoding} does not supported." unless ELEMENT_ENCODINGS.include?(element_encoding)
       raise ArgumentError, "hash_type #{hash_type} does not supported." unless HASH_TYPES.include?(hash_type)
       raise ArgumentError, "internal_tag must be string." unless branch_tag.is_a?(String)
       raise ArgumentError, "sort_hashes must be boolean." unless sort_hashes.is_a?(TrueClass) || sort_hashes.is_a?(FalseClass)
+      @element_encoding = element_encoding
       @hash_type = hash_type
       @branch_tag = branch_tag
       @sort_hashes = sort_hashes
     end
 
     # Bitcoin configuration.
+    # @param [Symbol] element_encoding How elements are interpreted, :hex or :binary.
     # @return [Merkle::Config]
-    def self.bitcoin
-      Config.new(hash_type: :double_sha256, sort_hashes: false)
+    def self.bitcoin(element_encoding:)
+      Config.new(element_encoding: element_encoding, hash_type: :double_sha256, sort_hashes: false)
     end
 
     # Taptree configuration.
+    # @param [Symbol] element_encoding How elements are interpreted, :hex or :binary.
     # @return [Merkle::Config]
-    def self.taptree
-      Config.new(branch_tag: 'TapBranch')
+    def self.taptree(element_encoding:)
+      Config.new(element_encoding: element_encoding, branch_tag: 'TapBranch')
     end
 
-    # Generate tagged hash.
+    # Convert +element+ into the byte string to be hashed, following element_encoding.
+    # @param [String] element An element as given to .from_elements.
+    # @return [String] Byte string.
+    # @raise [ArgumentError] If +element+ does not match element_encoding.
+    def encode_element(element)
+      raise ArgumentError, "element must be string." unless element.is_a?(String)
+      case element_encoding
+      when :hex
+        raise ArgumentError, "element must be a hex string." unless hex_string?(element)
+        [element].pack('H*')
+      when :binary
+        element.b
+      end
+    end
+
+    # Generate tagged hash. +data+ is always hashed as a byte string.
+    # To hash an element written as hex, pass it through #encode_element first.
     # @param [String] data The data to be hashed.
     # @param [String] tag Tag string used tagging.
     # @return [String] Tagged hash value.
@@ -43,7 +72,7 @@ module Merkle
       raise ArgumentError, "data must be string." unless data.is_a?(String)
       raise ArgumentError, "tag must be a String." unless tag.is_a?(String)
 
-      data_bin = hex_to_bin(data).b
+      data_bin = data.b
 
       unless tag.empty?
         tag_bin = Digest::SHA256.digest(tag).b

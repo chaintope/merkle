@@ -3,7 +3,7 @@ require 'spec_helper'
 RSpec.describe Merkle::BinaryTree do
 
   describe 'bitcoin compatible' do
-    let(:config) { Merkle::Config.bitcoin }
+    let(:config) { Merkle::Config.bitcoin(element_encoding: :hex) }
     let(:tree) { described_class.new(config: config, leaves: leaves) }
     let(:leaves) {[ # tx hash
       "5413f97b08de361a6bb32dbbd20e755499d39ad9870537d340a5393eaba4eb9d",
@@ -44,7 +44,7 @@ RSpec.describe Merkle::BinaryTree do
     end
 
     context 'sorted_hash is true' do
-      let(:config) { Merkle::Config.new(hash_type: :double_sha256, sort_hashes: true) }
+      let(:config) { Merkle::Config.new(element_encoding: :hex, hash_type: :double_sha256, sort_hashes: true) }
       let(:leaves) {[
         "fc8bc019d625305199d825188539571556485f86c85def5d274c8ca9075860f3",
         "5413f97b08de361a6bb32dbbd20e755499d39ad9870537d340a5393eaba4eb9d",

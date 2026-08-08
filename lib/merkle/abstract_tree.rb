@@ -16,6 +16,7 @@ module Merkle
       raise ArgumentError, 'leaves must be Array' unless leaves.is_a?(Array)
       @config = config
       @leaves = leaves
+      validate_leaves!
     end
 
     # Create tree from +elements+. For each element in elements,
@@ -29,7 +30,7 @@ module Merkle
       raise ArgumentError, 'elements must be Array' unless elements.is_a?(Array)
       raise ArgumentError, 'leaf_tag must be string' unless leaf_tag.is_a?(String)
       leaves = elements.map do |element|
-        config.tagged_hash(element, leaf_tag).unpack1('H*')
+        config.tagged_hash(config.encode_element(element), leaf_tag).unpack1('H*')
       end
       self.new(config: config, leaves: leaves)
     end
@@ -39,8 +40,7 @@ module Merkle
     # @raise [Merkle::Error] If leaves is empty.
     def compute_root
       raise Error, 'leaves is empty' if leaves.empty?
-      # nodes = leaves
-      nodes = leaves.map {|leaf| hex_to_bin(leaf) }
+      nodes = leaves.map {|leaf| decode_hash(leaf) }
       while nodes.length > 1
         nodes = build_next_level(nodes)
       end
@@ -63,6 +63,12 @@ module Merkle
     end
 
     private
+
+    # Validate the leaves this tree was built with.
+    # @raise [ArgumentError] If any leaf is not a node hash.
+    def validate_leaves!
+      leaves.each { |leaf| decode_hash(leaf) }
+    end
 
     # Gets the siblings that corresponds to +leaf_index+ and its directions (if necessary).
     # @param [Integer] leaf_index The leaf index.

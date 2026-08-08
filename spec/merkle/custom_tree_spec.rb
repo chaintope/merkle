@@ -1,13 +1,16 @@
 require 'spec_helper'
 
 RSpec.describe Merkle::CustomTree do
-  let(:config) { Merkle::Config.new(hash_type: :sha256, sort_hashes: false) }
+  # Leaves are hex, the expected hashes below are computed over the raw bytes.
+  def bin(hex) = [hex].pack('H*')
+
+  let(:config) { Merkle::Config.new(element_encoding: :binary, hash_type: :sha256, sort_hashes: false) }
 
   describe '#initialize' do
     context 'with nested structure' do
-      let(:leaf_a) { config.tagged_hash('A') }
-      let(:leaf_b) { config.tagged_hash('B') }
-      let(:leaf_c) { config.tagged_hash('C') }
+      let(:leaf_a) { config.tagged_hash('A').unpack1('H*') }
+      let(:leaf_b) { config.tagged_hash('B').unpack1('H*') }
+      let(:leaf_c) { config.tagged_hash('C').unpack1('H*') }
       let(:nested_leaves) { [leaf_a, [leaf_b, leaf_c]] }
       let(:tree) { described_class.new(config: config, leaves: nested_leaves) }
 
@@ -24,18 +27,18 @@ RSpec.describe Merkle::CustomTree do
 
     context 'with invalid leaf' do
       it 'raises error for non-hex leaf' do
-        invalid_leaves = [0, config.tagged_hash('B')]
+        invalid_leaves = [0, config.tagged_hash('B').unpack1('H*')]
         expect {
           described_class.new(config: config, leaves: invalid_leaves)
-        }.to raise_error(ArgumentError, /leaf hash must be string./)
+        }.to raise_error(ArgumentError, /hash must be string/)
       end
     end
     
     context 'with invalid binary tree structure' do
       it 'raises error for node with 3 children' do
-        leaf_a = config.tagged_hash('A')
-        leaf_b = config.tagged_hash('B')
-        leaf_c = config.tagged_hash('C')
+        leaf_a = config.tagged_hash('A').unpack1('H*')
+        leaf_b = config.tagged_hash('B').unpack1('H*')
+        leaf_c = config.tagged_hash('C').unpack1('H*')
         invalid_structure = [leaf_a, leaf_b, leaf_c]  # 3 children at root
         
         expect {
@@ -44,10 +47,10 @@ RSpec.describe Merkle::CustomTree do
       end
       
       it 'raises error for node with 4 children' do
-        leaf_a = config.tagged_hash('A')
-        leaf_b = config.tagged_hash('B')
-        leaf_c = config.tagged_hash('C')
-        leaf_d = config.tagged_hash('D')
+        leaf_a = config.tagged_hash('A').unpack1('H*')
+        leaf_b = config.tagged_hash('B').unpack1('H*')
+        leaf_c = config.tagged_hash('C').unpack1('H*')
+        leaf_d = config.tagged_hash('D').unpack1('H*')
         invalid_structure = [leaf_a, leaf_b, leaf_c, leaf_d]  # 4 children at root
         
         expect {
@@ -56,10 +59,10 @@ RSpec.describe Merkle::CustomTree do
       end
       
       it 'raises error for nested node with 3 children' do
-        leaf_a = config.tagged_hash('A')
-        leaf_b = config.tagged_hash('B')
-        leaf_c = config.tagged_hash('C')
-        leaf_d = config.tagged_hash('D')
+        leaf_a = config.tagged_hash('A').unpack1('H*')
+        leaf_b = config.tagged_hash('B').unpack1('H*')
+        leaf_c = config.tagged_hash('C').unpack1('H*')
+        leaf_d = config.tagged_hash('D').unpack1('H*')
         # Root has 2 children, but left subtree has 3 children
         invalid_structure = [[leaf_a, leaf_b, leaf_c], leaf_d]
         
@@ -69,8 +72,8 @@ RSpec.describe Merkle::CustomTree do
       end
       
       it 'allows valid binary tree with exactly 2 children' do
-        leaf_a = config.tagged_hash('A')
-        leaf_b = config.tagged_hash('B')
+        leaf_a = config.tagged_hash('A').unpack1('H*')
+        leaf_b = config.tagged_hash('B').unpack1('H*')
         valid_structure = [leaf_a, leaf_b]  # Exactly 2 children
         
         expect {
@@ -79,7 +82,7 @@ RSpec.describe Merkle::CustomTree do
       end
       
       it 'allows node with 1 child' do
-        leaf_a = config.tagged_hash('A')
+        leaf_a = config.tagged_hash('A').unpack1('H*')
         valid_structure = [leaf_a]  # Single child is allowed
         
         expect {
@@ -99,12 +102,12 @@ RSpec.describe Merkle::CustomTree do
 
   describe '#compute_root' do
     context 'with structure: A, (B, C), (D, E), F' do
-      let(:leaf_a) { config.tagged_hash('A') }
-      let(:leaf_b) { config.tagged_hash('B') }
-      let(:leaf_c) { config.tagged_hash('C') }
-      let(:leaf_d) { config.tagged_hash('D') }
-      let(:leaf_e) { config.tagged_hash('E') }
-      let(:leaf_f) { config.tagged_hash('F') }
+      let(:leaf_a) { config.tagged_hash('A').unpack1('H*') }
+      let(:leaf_b) { config.tagged_hash('B').unpack1('H*') }
+      let(:leaf_c) { config.tagged_hash('C').unpack1('H*') }
+      let(:leaf_d) { config.tagged_hash('D').unpack1('H*') }
+      let(:leaf_e) { config.tagged_hash('E').unpack1('H*') }
+      let(:leaf_f) { config.tagged_hash('F').unpack1('H*') }
       let(:nested_leaves) { [[[leaf_a, [leaf_b, leaf_c]], [leaf_d, leaf_e]], leaf_f] }
       let(:tree) { described_class.new(config: config, leaves: nested_leaves) }
 
@@ -116,22 +119,22 @@ RSpec.describe Merkle::CustomTree do
         # h(left) = hash(h(A, h(B, C)) || h(D,E))
         # root = hash(h(left) || F)
         
-        h_bc = config.tagged_hash(leaf_b + leaf_c)
-        h_a_bc = config.tagged_hash(leaf_a + h_bc)
-        h_de = config.tagged_hash(leaf_d + leaf_e)
+        h_bc = config.tagged_hash(bin(leaf_b) + bin(leaf_c))
+        h_a_bc = config.tagged_hash(bin(leaf_a) + h_bc)
+        h_de = config.tagged_hash(bin(leaf_d) + bin(leaf_e))
         h_left = config.tagged_hash(h_a_bc + h_de)
-        expected_root = config.tagged_hash(h_left + leaf_f)
+        expected_root = config.tagged_hash(h_left + bin(leaf_f))
         
         expect(tree.compute_root).to eq(expected_root.unpack1('H*'))
       end
     end
 
     context 'with nested structure: ((A, B), (C, (D, E)))' do
-      let(:leaf_a) { config.tagged_hash('A') }
-      let(:leaf_b) { config.tagged_hash('B') }
-      let(:leaf_c) { config.tagged_hash('C') }
-      let(:leaf_d) { config.tagged_hash('D') }
-      let(:leaf_e) { config.tagged_hash('E') }
+      let(:leaf_a) { config.tagged_hash('A').unpack1('H*') }
+      let(:leaf_b) { config.tagged_hash('B').unpack1('H*') }
+      let(:leaf_c) { config.tagged_hash('C').unpack1('H*') }
+      let(:leaf_d) { config.tagged_hash('D').unpack1('H*') }
+      let(:leaf_e) { config.tagged_hash('E').unpack1('H*') }
       let(:nested_leaves) { [[leaf_a, leaf_b], [leaf_c, [leaf_d, leaf_e]]] }
       let(:tree) { described_class.new(config: config, leaves: nested_leaves) }
 
@@ -142,9 +145,9 @@ RSpec.describe Merkle::CustomTree do
         # h(right) = hash(C || h(D,E))
         # root = hash(h(A,B) || h(right))
         
-        h_ab = config.tagged_hash(leaf_a + leaf_b)
-        h_de = config.tagged_hash(leaf_d + leaf_e)
-        h_c_de = config.tagged_hash(leaf_c + h_de)
+        h_ab = config.tagged_hash(bin(leaf_a) + bin(leaf_b))
+        h_de = config.tagged_hash(bin(leaf_d) + bin(leaf_e))
+        h_c_de = config.tagged_hash(bin(leaf_c) + h_de)
         expected_root = config.tagged_hash(h_ab + h_c_de)
         
         expect(tree.compute_root).to eq(expected_root.unpack1('H*'))
@@ -152,9 +155,9 @@ RSpec.describe Merkle::CustomTree do
     end
 
     context 'with sorted hashes' do
-      let(:config) { Merkle::Config.new(hash_type: :sha256, sort_hashes: true) }
-      let(:leaf_a) { config.tagged_hash('A') }
-      let(:leaf_b) { config.tagged_hash('B') }
+      let(:config) { Merkle::Config.new(element_encoding: :binary, hash_type: :sha256, sort_hashes: true) }
+      let(:leaf_a) { config.tagged_hash('A').unpack1('H*') }
+      let(:leaf_b) { config.tagged_hash('B').unpack1('H*') }
       let(:nested_leaves) { [leaf_b, leaf_a] }  # B, A
       let(:tree) { described_class.new(config: config, leaves: nested_leaves) }
 
@@ -163,7 +166,7 @@ RSpec.describe Merkle::CustomTree do
         # leaf_a: c19a797fa1fd590cd2e5b42d1cf5f246e29b91684e2f87404b81dc345c7a56a0
         # leaf_b: f4f97c88c409dcf3789b5b518da3f7d266c488066e97a606e38a150779880735
 
-        sorted_root = config.tagged_hash(leaf_a + leaf_b)
+        sorted_root = config.tagged_hash(bin(leaf_a) + bin(leaf_b))
         expect(tree.compute_root).to eq(sorted_root.unpack1('H*'))
       end
     end
@@ -195,10 +198,10 @@ RSpec.describe Merkle::CustomTree do
   end
 
   describe '#generate_proof' do
-    let(:leaf_a) { config.tagged_hash('A') }
-    let(:leaf_b) { config.tagged_hash('B') }
-    let(:leaf_c) { config.tagged_hash('C') }
-    let(:leaf_d) { config.tagged_hash('D') }
+    let(:leaf_a) { config.tagged_hash('A').unpack1('H*') }
+    let(:leaf_b) { config.tagged_hash('B').unpack1('H*') }
+    let(:leaf_c) { config.tagged_hash('C').unpack1('H*') }
+    let(:leaf_d) { config.tagged_hash('D').unpack1('H*') }
     let(:nested_leaves) { [[leaf_a, [leaf_b, leaf_c]], leaf_d] }
     let(:tree) { described_class.new(config: config, leaves: nested_leaves) }
 
@@ -215,14 +218,14 @@ RSpec.describe Merkle::CustomTree do
       # h(A, h(B,C)) = hash(A || h(B,C))
       # root = hash(h(A, h(B,C)) || D)
       
-      bc = config.tagged_hash(leaf_b + leaf_c)
-      a_bc = config.tagged_hash(leaf_a + bc)
-      expected_root = config.tagged_hash(a_bc + leaf_d)
+      bc = config.tagged_hash(bin(leaf_b) + bin(leaf_c))
+      a_bc = config.tagged_hash(bin(leaf_a) + bc)
+      expected_root = config.tagged_hash(a_bc + bin(leaf_d))
       
       expect(proof.root).to eq(expected_root.unpack1('H*'))
       expect(proof.valid?).to be true
       expect(proof.directions).to eq([1, 1])
-      expect(proof.siblings).to eq([bc.unpack1('H*'), leaf_d.unpack1('H*')])
+      expect(proof.siblings).to eq([bc.unpack1('H*'), leaf_d])
     end
   end
 
@@ -265,9 +268,9 @@ RSpec.describe Merkle::CustomTree do
   end
 
   describe '#generate_proof with duplicate leaves' do
-    let(:leaf_dup) { config.tagged_hash('dup') }
-    let(:leaf_b) { config.tagged_hash('B') }
-    let(:leaf_c) { config.tagged_hash('C') }
+    let(:leaf_dup) { config.tagged_hash('dup').unpack1('H*') }
+    let(:leaf_b) { config.tagged_hash('B').unpack1('H*') }
+    let(:leaf_c) { config.tagged_hash('C').unpack1('H*') }
     let(:nested_leaves) { [[leaf_dup, leaf_dup], [leaf_b, leaf_c]] }
     let(:tree) { described_class.new(config: config, leaves: nested_leaves) }
 
@@ -278,6 +281,27 @@ RSpec.describe Merkle::CustomTree do
 
     it 'generates a valid proof for every index' do
       expect((0..3).all? { |i| tree.generate_proof(i).valid? }).to be true
+    end
+  end
+
+  describe 'structure malleability' do
+    let(:leaf_a) { config.tagged_hash('A').unpack1('H*') }
+    let(:leaf_b) { config.tagged_hash('B').unpack1('H*') }
+
+    it 'rejects a single-child node that wraps a subtree' do
+      # [[a, b]] passes its child's hash straight up, so it would commit to the same root as [a, b].
+      expect { described_class.new(config: config, leaves: [[leaf_a, leaf_b]]) }
+        .to raise_error(ArgumentError, /must have 2 children unless the tree is a single leaf/)
+    end
+
+    it 'rejects a single-child node below the root' do
+      expect { described_class.new(config: config, leaves: [leaf_a, [leaf_b]]) }
+        .to raise_error(ArgumentError, /must have 2 children unless the tree is a single leaf/)
+    end
+
+    it 'still accepts a tree holding a single leaf' do
+      tree = described_class.new(config: config, leaves: [leaf_a])
+      expect(tree.compute_root).to eq(leaf_a)
     end
   end
 

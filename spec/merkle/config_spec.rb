@@ -1,51 +1,94 @@
 require 'spec_helper'
 
 RSpec.describe Merkle::Config do
+  describe '#initialize' do
+    it 'requires element_encoding' do
+      expect { described_class.new }.to raise_error(ArgumentError, /element_encoding/)
+    end
+
+    it 'rejects an unsupported element_encoding' do
+      expect { described_class.new(element_encoding: :auto) }
+        .to raise_error(ArgumentError, 'element_encoding auto does not supported.')
+    end
+
+    it 'requires element_encoding on the preset configurations' do
+      expect { described_class.bitcoin }.to raise_error(ArgumentError, /element_encoding/)
+      expect { described_class.taptree }.to raise_error(ArgumentError, /element_encoding/)
+      expect(described_class.bitcoin(element_encoding: :hex).hash_type).to eq(:double_sha256)
+      expect(described_class.taptree(element_encoding: :hex).branch_tag).to eq('TapBranch')
+    end
+  end
+
+  describe '#encode_element' do
+    context 'element_encoding is :hex' do
+      let(:config) { described_class.new(element_encoding: :hex) }
+
+      it 'decodes the element' do
+        expect(config.encode_element('00ff')).to eq("\x00\xff".b)
+      end
+
+      it 'rejects an element that is not an even-length hex string' do
+        ['hello', 'abc', ''].each do |element|
+          expect { config.encode_element(element) }
+            .to raise_error(ArgumentError, 'element must be a hex string.')
+        end
+      end
+    end
+
+    context 'element_encoding is :binary' do
+      let(:config) { described_class.new(element_encoding: :binary) }
+
+      it 'keeps the element as bytes' do
+        expect(config.encode_element('00ff')).to eq('00ff'.b)
+        expect(config.encode_element('hello')).to eq('hello'.b)
+      end
+    end
+
+    it 'gives an element and its hex representation different hashes' do
+      # 'hello' and '68656c6c6f' collided while the encoding was guessed.
+      hex = described_class.new(element_encoding: :hex)
+      binary = described_class.new(element_encoding: :binary)
+      expect(hex.tagged_hash(hex.encode_element('68656c6c6f')))
+        .to eq(binary.tagged_hash(binary.encode_element('hello')))
+      expect(binary.tagged_hash(binary.encode_element('68656c6c6f')))
+        .to_not eq(binary.tagged_hash(binary.encode_element('hello')))
+    end
+  end
+
   describe '#tagged_hash' do
-    context 'with hex input' do
-      let(:config) { described_class.new(hash_type: :sha256, branch_tag: '') }
+    let(:config) { described_class.new(element_encoding: :binary, hash_type: :sha256, branch_tag: '') }
 
-      it 'unpacks hex and hashes correctly' do
-        hex = '00ff'
-        bin = [hex].pack('H*')
-        raw = config.tagged_hash(hex)
-        expect(raw).to eq(Digest::SHA256.digest(bin))
+    it 'hashes the data as bytes without decoding it' do
+      expect(config.tagged_hash('00ff')).to eq(Digest::SHA256.digest('00ff'))
+    end
+
+    context 'with UTF-8 input' do
+      let(:utf8) { '元氣が一番' }
+
+      it 'returns a 32-byte digest with an empty tag' do
+        expect(config.tagged_hash(utf8).bytesize).to eq(32)
+      end
+
+      it 'forces binary encoding with a non-empty tag' do
+        tagged = described_class.new(element_encoding: :binary, branch_tag: 'MyBranch')
+        raw = tagged.tagged_hash(utf8)
+        expect(raw.bytesize).to eq(32)
+        expect(raw.encoding).to eq(Encoding::ASCII_8BIT)
       end
     end
 
-    context 'with UTF-8 input and empty tag' do
-      let(:config) { described_class.new(hash_type: :sha256, branch_tag: '') }
-      let(:utf8) { '元氣が一番' }
-
-      it 'does not raise and returns 32-byte digest' do
-        expect do
-          raw = config.tagged_hash(utf8)
-          expect(raw.bytesize).to eq(32)
-        end.not_to raise_error
-      end
-    end
-
-    context 'with UTF-8 input and non-empty branch_tag' do
-      let(:config) { described_class.new(hash_type: :sha256, branch_tag: 'MyBranch') }
-      let(:utf8) { '元氣が一番' }
-
-      it 'forces binary encoding and hashes without error' do
-        expect do
-          raw = config.tagged_hash(utf8)
-          expect(raw.bytesize).to eq(32)
-          expect(raw.encoding).to eq(Encoding::ASCII_8BIT)
-        end.not_to raise_error
-      end
+    it 'accepts a string that is not valid UTF-8' do
+      # The encoding used to be probed with a regex, which raised on invalid byte sequences.
+      expect { config.tagged_hash("\xff\xfe".force_encoding('UTF-8')) }.not_to raise_error
     end
 
     context 'double_sha256 path' do
-      let(:config) { described_class.new(hash_type: :double_sha256, branch_tag: 'T') }
-      let(:data) { 'deadbeef' }
+      let(:config) { described_class.new(element_encoding: :hex, hash_type: :double_sha256, branch_tag: 'T') }
 
       it 'applies SHA256 twice' do
-        buf = [data].pack('H*')
+        buf = config.encode_element('deadbeef')
         twice = Digest::SHA256.digest(Digest::SHA256.digest(buf))
-        expect(config.tagged_hash(data, '')).to eq(twice)
+        expect(config.tagged_hash(buf, '')).to eq(twice)
       end
     end
   end

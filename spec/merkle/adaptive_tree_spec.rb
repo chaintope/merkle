@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 RSpec.describe Merkle::AdaptiveTree do
-  let(:config) { Merkle::Config.taptree }
+  let(:config) { Merkle::Config.taptree(element_encoding: :hex) }
   let(:tag) { 'TapLeaf' }
   let(:elements) {[
     'c02220c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5ac',
@@ -29,7 +29,7 @@ RSpec.describe Merkle::AdaptiveTree do
     #   N1      N2
     #  /  \    /  \
     # A    B  C    D
-    tree.leaves << config.tagged_hash('c02220a016430f275c30cb15f399aa807cc9bde6b2c4c80c84be3bb27912089c18e363ac', tag).unpack1('H*')
+    tree.leaves << config.tagged_hash(config.encode_element('c02220a016430f275c30cb15f399aa807cc9bde6b2c4c80c84be3bb27912089c18e363ac'), tag).unpack1('H*')
     expect(tree.compute_root).to eq('4036d6059d4573a9928e48cfcde92c1db4252bb6bb4bc62dc0048feb51c6b4cd')
     proof = tree.generate_proof(2)
     expect(proof.siblings).to eq([tree.leaves.last, 'dea6b65c6adddf96f7025001c60c2c2cd64b3dc884c1249fd711623ebb75b151'])
@@ -43,7 +43,7 @@ RSpec.describe Merkle::AdaptiveTree do
     #   N2      N3
     #  /  \    /  \
     # A    B  C    D
-    tree.leaves << config.tagged_hash('c02220b256afd27b26b0db101fd4a3d99afdd876dd2aaa5be967198882476bf425c301ac', tag).unpack1('H*')
+    tree.leaves << config.tagged_hash(config.encode_element('c02220b256afd27b26b0db101fd4a3d99afdd876dd2aaa5be967198882476bf425c301ac'), tag).unpack1('H*')
     expect(tree.compute_root).to eq('600bec51f45ae5ef6a0bf05321891e643ea585cf2f65e46e3d16d205d43ac839')
     proof = tree.generate_proof(4)
     expect(proof.leaf).to eq(tree.leaves.last)
@@ -58,7 +58,7 @@ RSpec.describe Merkle::AdaptiveTree do
     #   N3      N4   E    F
     #  /  \    /  \
     # A    B  C    D
-    tree.leaves << config.tagged_hash('c022200e5ba1cfed1fe76ff81558731b7279ed23ddd95ce0fd67adc94584e80abbe987ac', tag).unpack1('H*')
+    tree.leaves << config.tagged_hash(config.encode_element('c022200e5ba1cfed1fe76ff81558731b7279ed23ddd95ce0fd67adc94584e80abbe987ac'), tag).unpack1('H*')
     expect(tree.compute_root).to eq('981a53412c92098b732a4bbf84a3af811e028c0e3d0fec21fcc3934392684465')
     proof = tree.generate_proof(5)
     expect(proof.leaf).to eq(tree.leaves.last)
@@ -70,7 +70,7 @@ RSpec.describe Merkle::AdaptiveTree do
   end
 
   context 'sorted_hash is false' do
-    let(:config) { Merkle::Config.new(branch_tag: 'TapBranch', sort_hashes: false) }
+    let(:config) { Merkle::Config.new(element_encoding: :hex, branch_tag: 'TapBranch', sort_hashes: false) }
     it do
       expect(tree.compute_root).to eq('bd15f5392eba9089d40af214e87128ea66f195ffdce57715886e455db1ce5689')
       proof = tree.generate_proof(1)
@@ -79,7 +79,7 @@ RSpec.describe Merkle::AdaptiveTree do
       expect(proof.directions).to eq([0, 1])
       expect(proof.valid?).to be true
 
-      tree.leaves << config.tagged_hash('c02220a016430f275c30cb15f399aa807cc9bde6b2c4c80c84be3bb27912089c18e363ac', tag).unpack1('H*')
+      tree.leaves << config.tagged_hash(config.encode_element('c02220a016430f275c30cb15f399aa807cc9bde6b2c4c80c84be3bb27912089c18e363ac'), tag).unpack1('H*')
       expect(tree.compute_root).to eq('b58a6e62126b098ccea3b4de45d82a8825f1eb3cc47d5a15012e621072704d18')
       proof = tree.generate_proof(2)
       expect(proof.directions).to eq([1, 0])

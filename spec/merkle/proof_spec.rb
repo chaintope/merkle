@@ -5,7 +5,7 @@ RSpec.describe Merkle::Proof do
 
   describe '#initialize' do
     context 'sort_hashes is true' do
-      let(:config) { Merkle::Config.new }
+      let(:config) { Merkle::Config.new(element_encoding: :binary) }
       let(:proof) { Merkle::BinaryTree.from_elements(config: config, elements: elements).generate_proof(0) }
       let(:args) { { config: config, root: proof.root, leaf: proof.leaf, siblings: proof.siblings } }
 
@@ -41,7 +41,7 @@ RSpec.describe Merkle::Proof do
     end
 
     context 'sort_hashes is false' do
-      let(:config) { Merkle::Config.new(sort_hashes: false) }
+      let(:config) { Merkle::Config.new(element_encoding: :binary, sort_hashes: false) }
       let(:proof) { Merkle::BinaryTree.from_elements(config: config, elements: elements).generate_proof(1) }
       let(:args) do
         { config: config, root: proof.root, leaf: proof.leaf, siblings: proof.siblings, directions: proof.directions }
