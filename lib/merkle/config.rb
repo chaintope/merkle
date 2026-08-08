@@ -9,15 +9,20 @@ module Merkle
     # How the elements passed to .from_elements are turned into bytes.
     # :hex    - each element is a hex string and is decoded before hashing.
     # :binary - each element is already a byte string and is hashed as-is.
-    # There is deliberately no auto-detection: 'hello' and '68656c6c6f' would otherwise
-    # produce the same leaf, and so would 'AB' and 'ab'.
-    ELEMENT_ENCODINGS = [:hex, :binary]
+    # :auto   - each element is decoded if it looks like hex, otherwise hashed as-is.
+    #
+    # :auto exists to reproduce roots computed by 0.4.0 and earlier, where this was the only
+    # behaviour. Do not choose it for a new protocol: 'hello' and '68656c6c6f' resolve to the
+    # same leaf under it, and so do 'AB' and 'ab'. Note it reproduces 0.4.0, not 0.3.1 and
+    # earlier, which also padded odd-length hex ('abc' and 'abc0' shared a leaf there).
+    ELEMENT_ENCODINGS = [:hex, :binary, :auto]
 
     attr_reader :hash_type, :branch_tag, :sort_hashes, :element_encoding
 
     # Constructor
-    # @param [Symbol] element_encoding How elements are interpreted, :hex or :binary.
+    # @param [Symbol] element_encoding How elements are interpreted, :hex, :binary or :auto.
     # This has no default on purpose. Guessing it silently changes the merkle root.
+    # See ELEMENT_ENCODINGS before reaching for :auto.
     # @param [Symbol] hash_type The hashing algorithm used to hash the internal nodes.
     # @param [String] branch_tag Tags to use when hashing internal nodes.
     # @param [Boolean] sort_hashes Whether to sort internal nodes in lexicographical order and hash them.
@@ -35,14 +40,14 @@ module Merkle
     end
 
     # Bitcoin configuration.
-    # @param [Symbol] element_encoding How elements are interpreted, :hex or :binary.
+    # @param [Symbol] element_encoding How elements are interpreted, :hex, :binary or :auto.
     # @return [Merkle::Config]
     def self.bitcoin(element_encoding:)
       Config.new(element_encoding: element_encoding, hash_type: :double_sha256, sort_hashes: false)
     end
 
     # Taptree configuration.
-    # @param [Symbol] element_encoding How elements are interpreted, :hex or :binary.
+    # @param [Symbol] element_encoding How elements are interpreted, :hex, :binary or :auto.
     # @return [Merkle::Config]
     def self.taptree(element_encoding:)
       Config.new(element_encoding: element_encoding, branch_tag: 'TapBranch')
@@ -60,6 +65,8 @@ module Merkle
         [element].pack('H*')
       when :binary
         element.b
+      when :auto
+        hex_string?(element) ? [element].pack('H*') : element.b
       end
     end
 

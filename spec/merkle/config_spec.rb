@@ -7,8 +7,8 @@ RSpec.describe Merkle::Config do
     end
 
     it 'rejects an unsupported element_encoding' do
-      expect { described_class.new(element_encoding: :auto) }
-        .to raise_error(ArgumentError, 'element_encoding auto does not supported.')
+      expect { described_class.new(element_encoding: :utf8) }
+        .to raise_error(ArgumentError, 'element_encoding utf8 does not supported.')
     end
 
     it 'requires element_encoding on the preset configurations' do
@@ -41,6 +41,25 @@ RSpec.describe Merkle::Config do
       it 'keeps the element as bytes' do
         expect(config.encode_element('00ff')).to eq('00ff'.b)
         expect(config.encode_element('hello')).to eq('hello'.b)
+      end
+    end
+
+    context 'element_encoding is :auto' do
+      let(:config) { described_class.new(element_encoding: :auto) }
+
+      it 'decodes an element that looks like hex and keeps the rest as bytes' do
+        expect(config.encode_element('00ff')).to eq("\x00\xff".b)
+        expect(config.encode_element('hello')).to eq('hello'.b)
+      end
+
+      it 'collides an element with its hex representation' do
+        # This is why :auto is only for reproducing roots computed by 0.4.0 and earlier.
+        expect(config.encode_element('68656c6c6f')).to eq(config.encode_element('hello'))
+        expect(config.encode_element('AB')).to eq(config.encode_element('ab'))
+      end
+
+      it 'does not pad an odd-length hex string, unlike 0.3.1 and earlier' do
+        expect(config.encode_element('abc')).to_not eq(config.encode_element('abc0'))
       end
     end
 

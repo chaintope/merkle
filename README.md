@@ -33,7 +33,10 @@ Or install it yourself as:
 require 'merkle'
 
 # Create configuration
-# element_encoding says how the elements passed to .from_elements are read.
+# element_encoding says how the elements passed to .from_elements are read:
+#   :hex    - elements are hex strings and are decoded before hashing
+#   :binary - elements are byte strings and are hashed as-is
+#   :auto   - legacy mode, see "Upgrading from 0.4.0 and earlier"
 # It has no default: guessing it silently changes the merkle root.
 config = Merkle::Config.new(element_encoding: :binary, hash_type: :sha256)
 
@@ -201,5 +204,24 @@ protocol built on top of it:
   an odd number of them, exactly as Bitcoin does, so `[a, b, c]` and `[a, b, c, c]` share a root.
   Use `AdaptiveTree` or `CustomTree` if you do not need Bitcoin compatibility.
 
-Element encoding is not left to the protocol: `element_encoding` is required on `Config` so that
-`'hello'` and `'68656c6c6f'` can never resolve to the same leaf.
+Element encoding, by contrast, is not left to guesswork: `element_encoding` is required on
+`Config`, so `'hello'` and `'68656c6c6f'` cannot silently resolve to the same leaf.
+
+### Upgrading from 0.4.0 and earlier
+
+`element_encoding` has no default, so every `Config` construction has to be updated. Pick the
+value that matches what you were already passing to `.from_elements`:
+
+| What you pass as elements | Use |
+| --- | --- |
+| Hex strings | `:hex` |
+| Raw byte strings | `:binary` |
+| A mix of both | `:auto` |
+
+`:auto` reproduces the old behaviour exactly, including its collisions: `'hello'` and
+`'68656c6c6f'` share a leaf under it, and so do `'AB'` and `'ab'`. Use it to keep verifying roots
+you already committed to, not for a new protocol. It reproduces 0.4.0; 0.3.1 and earlier also
+padded odd-length hex, so `'abc'` and `'abc0'` shared a leaf there and no mode reproduces that.
+
+Leaves are now always 64-character hex strings. If you were passing binary digests
+(`config.tagged_hash(...)`) as leaves, append `.unpack1('H*')`.
