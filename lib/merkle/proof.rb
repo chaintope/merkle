@@ -62,7 +62,9 @@ module Merkle
         current = config.tagged_hash(combined)
       end
 
-      current.unpack1('H*') == root
+      # Compare the decoded bytes. Comparing the hex would make the result depend on the case
+      # the caller happened to write +root+ in, even though both spell the same hash.
+      current == decode_hash(root)
     end
 
   end

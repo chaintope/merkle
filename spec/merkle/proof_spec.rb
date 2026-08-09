@@ -41,6 +41,14 @@ RSpec.describe Merkle::Proof do
         expect { described_class.new(**args.merge(siblings: siblings)) }.not_to raise_error
       end
 
+      it 'verifies a root written in upper case' do
+        # A node hash is accepted in either case, so verification must not depend on it.
+        expect(described_class.new(**args.merge(root: proof.root.upcase)).valid?).to be true
+        expect(described_class.new(**args.merge(leaf: proof.leaf.upcase)).valid?).to be true
+        upper = proof.siblings.map(&:upcase)
+        expect(described_class.new(**args.merge(siblings: upper)).valid?).to be true
+      end
+
       it 'rejects directions' do
         expect { described_class.new(**args.merge(directions: [0, 1])) }
           .to raise_error(ArgumentError, 'No directions are required because sorted_hash is enabled')
