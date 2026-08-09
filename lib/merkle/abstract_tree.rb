@@ -15,7 +15,8 @@ module Merkle
       raise ArgumentError, 'config must be Merkle::Config' unless config.is_a?(Merkle::Config)
       raise ArgumentError, 'leaves must be Array' unless leaves.is_a?(Array)
       @config = config
-      @leaves = leaves
+      # Copy, so that the array the caller keeps cannot change this tree's root behind its back.
+      @leaves = leaves.dup
       validate_leaves!
     end
 

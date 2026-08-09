@@ -39,8 +39,10 @@ module Merkle
       raise ArgumentError, "sort_hashes must be boolean." unless sort_hashes.is_a?(TrueClass) || sort_hashes.is_a?(FalseClass)
       @element_encoding = element_encoding
       @hash_type = hash_type
-      @leaf_tag = leaf_tag
-      @branch_tag = branch_tag
+      # Freeze the tags. A config is shared by every tree built with it, so mutating one in place
+      # would change the root of all of them and invalidate proofs already handed out.
+      @leaf_tag = leaf_tag.dup.freeze
+      @branch_tag = branch_tag.dup.freeze
       @sort_hashes = sort_hashes
     end
 

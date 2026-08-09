@@ -18,7 +18,10 @@ module Merkle
     # @raise [ArgumentError]
     def hex_string?(data)
       raise ArgumentError, 'data must be string' unless data.is_a?(String)
-      data.length.even? && data.match?(/\A[0-9a-fA-F]+\z/)
+      # Match on the bytes. Matching the string itself raises Encoding::CompatibilityError for a
+      # UTF-16 string and ArgumentError for invalid UTF-8, neither of which the caller expects.
+      bytes = data.b
+      bytes.bytesize.even? && bytes.match?(/\A[0-9a-fA-F]+\z/)
     end
 
     # Check whether +hex+ is the hex representation of a node hash.
@@ -43,6 +46,16 @@ module Merkle
       raise ArgumentError, 'hash must be string' unless hex.is_a?(String)
       raise ArgumentError, "hash must be a #{HASH_SIZE * 2}-character hex string" unless node_hash?(hex)
       [hex].pack('H*')
+    end
+
+    # Rewrite a node hash in the one spelling the library uses: lower case hex.
+    # Upper case names the same hash, so returning it verbatim would let a caller that matches
+    # leaves as strings miss a leaf whose proof verifies.
+    # @param [String] hex
+    # @return [String] Frozen lower case hex.
+    # @raise [ArgumentError]
+    def normalize_hash(hex)
+      bin_to_hex(decode_hash(hex)).freeze
     end
 
     # Convert binary string +data+ to hex string.

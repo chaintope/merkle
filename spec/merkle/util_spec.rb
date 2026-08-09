@@ -18,6 +18,13 @@ RSpec.describe Merkle::Util do
     it 'rejects a non-hex string' do
       expect(util.hex_string?('hello')).to be false
     end
+
+    it 'rejects a string whose encoding the regex cannot match' do
+      # Matching the string itself raised Encoding::CompatibilityError or ArgumentError from the
+      # regex, which reached callers of Config#encode_element as an unrelated failure.
+      expect(util.hex_string?('abcd'.encode('UTF-16LE'))).to be false
+      expect(util.hex_string?((+"\xff\xfe").force_encoding('UTF-8'))).to be false
+    end
   end
 
   describe '#decode_hash' do

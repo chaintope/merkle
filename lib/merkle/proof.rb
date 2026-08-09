@@ -36,10 +36,13 @@ module Merkle
         raise ArgumentError, 'direction must be 0 or 1' unless directions.all? { |direction| direction == 0 || direction == 1 }
       end
       @config = config
-      @root = root
-      @leaf = leaf
-      @siblings = siblings
-      @directions = directions
+      # Normalize and freeze. The checks above only bind if the arrays cannot grow afterwards:
+      # a caller holding the array it passed in could otherwise append past MAX_SIBLINGS, or
+      # shorten directions until #valid? reads nil and folds as if the sibling were on the right.
+      @root = normalize_hash(root)
+      @leaf = normalize_hash(leaf)
+      @siblings = siblings.map { |sibling| normalize_hash(sibling) }.freeze
+      @directions = directions.dup.freeze
     end
 
     # Verify the proof.

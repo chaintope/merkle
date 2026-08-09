@@ -322,6 +322,21 @@ RSpec.describe Merkle::CustomTree do
       expect { described_class.new(config: config, leaves: chain(Merkle::Util::MAX_DEPTH + 1, leaf)) }
         .to raise_error(ArgumentError, "Binary tree must not be deeper than #{Merkle::Util::MAX_DEPTH}")
     end
+
+    it 'rejects deeply nested elements before hashing them' do
+      # .from_elements walks the input before the constructor can check it.
+      deep = 'a'
+      (Merkle::Util::MAX_DEPTH + 1).times { deep = ['a', deep] }
+      expect { described_class.from_elements(config: config, elements: deep) }
+        .to raise_error(ArgumentError, "Binary tree must not be deeper than #{Merkle::Util::MAX_DEPTH}")
+    end
+
+    it 'checks the structure before generate_proof walks it' do
+      tree = described_class.new(config: config, leaves: [leaf, leaf])
+      tree.leaves[1] = chain(Merkle::Util::MAX_DEPTH + 1, leaf)
+      expect { tree.generate_proof(0) }
+        .to raise_error(ArgumentError, "Binary tree must not be deeper than #{Merkle::Util::MAX_DEPTH}")
+    end
   end
 
   describe 'structure validation after construction' do

@@ -49,6 +49,22 @@ RSpec.describe Merkle::Proof do
         expect(described_class.new(**args.merge(siblings: upper)).valid?).to be true
       end
 
+      it 'freezes the arrays so the checks above keep binding' do
+        siblings = proof.siblings.dup
+        built = described_class.new(**args.merge(siblings: siblings))
+        expect { built.siblings << ('aa' * 32) }.to raise_error(FrozenError)
+        siblings << ('aa' * 32)
+        expect(built.siblings.length).to eq(proof.siblings.length)
+      end
+
+      it 'normalizes a hash written in upper case' do
+        built = described_class.new(**args.merge(root: proof.root.upcase, leaf: proof.leaf.upcase,
+                                                 siblings: proof.siblings.map(&:upcase)))
+        expect(built.root).to eq(proof.root)
+        expect(built.leaf).to eq(proof.leaf)
+        expect(built.siblings).to eq(proof.siblings)
+      end
+
       it 'rejects directions' do
         expect { described_class.new(**args.merge(directions: [0, 1])) }
           .to raise_error(ArgumentError, 'No directions are required because sorted_hash is enabled')

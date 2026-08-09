@@ -19,7 +19,8 @@ module Merkle
       raise ArgumentError, 'config must be Merkle::Config' unless config.is_a?(Merkle::Config)
       raise ArgumentError, 'elements must be Array' unless elements.is_a?(Array)
 
-      # Convert elements to hashes while preserving structure
+      # Convert elements to hashes while preserving structure. This walks the input before the
+      # constructor gets to check it, so it has to enforce the depth limit itself.
       hashed_structure = convert_elements_to_hashes(elements, config)
 
       self.new(config: config, leaves: hashed_structure)
@@ -38,9 +39,10 @@ module Merkle
     end
 
     # Convert nested elements to nested hashes
-    def self.convert_elements_to_hashes(node, config)
+    def self.convert_elements_to_hashes(node, config, depth = 0)
       if node.is_a?(Array)
-        node.map { |child| convert_elements_to_hashes(child, config) }
+        raise ArgumentError, "Binary tree must not be deeper than #{MAX_DEPTH}" if depth >= MAX_DEPTH
+        node.map { |child| convert_elements_to_hashes(child, config, depth + 1) }
       else
         # This is a leaf element, hash it and convert to hex
         config.tagged_hash(config.encode_element(node), config.leaf_tag).unpack1('H*')
@@ -76,8 +78,14 @@ module Merkle
       end
     end
 
+    private_class_method :convert_elements_to_hashes
+    private :compute_node_hash
+
     # Override generate_proof to work with nested structure
     def generate_proof(leaf_index)
+      # Walking the structure before checking it would hit the recursion limit on a structure
+      # assembled after construction, and SystemStackError escapes the caller's rescue.
+      validate_leaves!
       all_leaves = extract_leaves(@leaves)
       raise ArgumentError, 'leaf_index must be Integer' unless leaf_index.is_a?(Integer)
       raise ArgumentError, 'leaf_index out of range' if leaf_index < 0 || all_leaves.length <= leaf_index

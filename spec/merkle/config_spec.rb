@@ -25,6 +25,12 @@ RSpec.describe Merkle::Config do
       expect(taptree.branch_tag).to eq('TapBranch')
     end
 
+    it 'freezes the tags so a shared config cannot be retagged in place' do
+      config = described_class.taptree(element_encoding: :hex)
+      expect { config.branch_tag.replace('TapBranchX') }.to raise_error(FrozenError)
+      expect { config.leaf_tag.replace('TapLeafX') }.to raise_error(FrozenError)
+    end
+
     it 'rejects a non-string leaf_tag' do
       expect { described_class.new(element_encoding: :hex, leaf_tag: :TapLeaf) }
         .to raise_error(ArgumentError, 'leaf_tag must be string.')
