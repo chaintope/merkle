@@ -303,6 +303,40 @@ RSpec.describe Merkle::CustomTree do
     end
   end
 
+  describe 'depth limit' do
+    let(:leaf) { config.tagged_hash('A').unpack1('H*') }
+
+    def chain(depth, leaf)
+      node = leaf
+      depth.times { node = [node, leaf] }
+      node
+    end
+
+    it 'accepts a tree as deep as a proof can describe' do
+      tree = described_class.new(config: config, leaves: chain(Merkle::Util::MAX_DEPTH, leaf))
+      expect(tree.generate_proof(0).siblings.length).to eq(Merkle::Proof::MAX_SIBLINGS)
+    end
+
+    it 'rejects a deeper tree instead of overflowing the stack' do
+      # SystemStackError is not a StandardError, so it would escape a caller's rescue.
+      expect { described_class.new(config: config, leaves: chain(Merkle::Util::MAX_DEPTH + 1, leaf)) }
+        .to raise_error(ArgumentError, "Binary tree must not be deeper than #{Merkle::Util::MAX_DEPTH}")
+    end
+  end
+
+  describe 'structure validation after construction' do
+    let(:leaf_a) { config.tagged_hash('A').unpack1('H*') }
+    let(:leaf_b) { config.tagged_hash('B').unpack1('H*') }
+
+    it 'rejects a structure assembled by mutating leaves' do
+      # leaves is readable and its arrays are mutable, so the constructor check is not enough.
+      tree = described_class.new(config: config, leaves: [leaf_a, leaf_b])
+      tree.leaves[1] = [leaf_b]
+      expect { tree.compute_root }
+        .to raise_error(ArgumentError, /must have 2 children unless the tree is a single leaf/)
+    end
+  end
+
   describe '#generate_proof with an unbalanced structure' do
     let(:elements) { ['a', [['b', 'c'], ['d', ['e', 'f']]]] }
     let(:tree) { described_class.from_elements(config: config, elements: elements) }

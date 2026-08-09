@@ -37,6 +37,12 @@ RSpec.describe Merkle::Util do
     it 'rejects a non-string' do
       expect { util.decode_hash(nil) }.to raise_error(ArgumentError, 'hash must be string')
     end
+
+    it 'rejects a string holding invalid UTF-8 bytes' do
+      # Matching the string itself would raise 'invalid byte sequence in UTF-8' from the regex.
+      expect { util.decode_hash(("\xff" * 64).force_encoding('UTF-8')) }
+        .to raise_error(ArgumentError, 'hash must be a 64-character hex string')
+    end
   end
 
   describe 'leaf collision' do

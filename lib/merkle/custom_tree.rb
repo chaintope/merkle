@@ -28,6 +28,9 @@ module Merkle
     # Compute merkle root using custom structure
     # @return [String] merkle root
     def compute_root
+      # Re-check here rather than trusting the constructor. +leaves+ is readable and its arrays
+      # are mutable, so a structure that was rejected at construction can be assembled afterwards.
+      validate_leaves!
       all_leaves = extract_leaves(@leaves)
       raise Error, 'leaves is empty' if all_leaves.empty?
       result = compute_node_hash(@leaves)
@@ -113,8 +116,13 @@ module Merkle
     # Validate that the structure is a binary tree (exactly 2 children per node)
     # @param [Object] node A subtree (nested Array) or a leaf hash.
     # @param [Boolean] root Whether +node+ is the whole tree.
-    def validate_binary_structure(node, root: false)
+    # @param [Integer] depth How far below the root +node+ sits.
+    def validate_binary_structure(node, root: false, depth: 0)
       return unless node.is_a?(Array)
+      # +depth+ counts the branches above this node, so a node here puts its children at
+      # depth + 1. Stopping at MAX_DEPTH keeps the deepest leaf within MAX_DEPTH branches,
+      # which is what Proof::MAX_SIBLINGS allows a proof to carry.
+      raise ArgumentError, "Binary tree must not be deeper than #{MAX_DEPTH}" if depth >= MAX_DEPTH
 
       case node.length
       when 0
@@ -127,7 +135,7 @@ module Merkle
           raise ArgumentError, "Binary tree nodes must have 2 children unless the tree is a single leaf"
         end
       when 2
-        node.each { |child| validate_binary_structure(child) }
+        node.each { |child| validate_binary_structure(child, depth: depth + 1) }
       else
         raise ArgumentError, "Binary tree nodes can have at most 2 children, got #{node.length}"
       end

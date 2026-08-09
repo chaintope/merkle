@@ -4,9 +4,9 @@ module Merkle
 
     # Upper bound on the number of siblings, i.e. the depth of the tree the proof came from.
     # A proof longer than this cannot correspond to any realistic tree, so it is rejected
-    # rather than hashed. 128 is the deepest a BIP341 script tree can be, since a control
-    # block carries at most 128 path elements.
-    MAX_SIBLINGS = 128
+    # rather than hashed. It matches the deepest tree the library will build, which is also the
+    # deepest a BIP341 script tree can be: a control block carries at most 128 path elements.
+    MAX_SIBLINGS = MAX_DEPTH
 
     attr_reader :config, :root, :leaf, :siblings, :directions
 

@@ -4,6 +4,11 @@ module Merkle
     # Size of a node hash in bytes. Leaves, siblings and internal nodes are all this size.
     HASH_SIZE = 32
 
+    # Deepest tree accepted. A tree deeper than this cannot be walked without risking a
+    # SystemStackError, which is not a StandardError and so escapes a caller's rescue.
+    # 128 is also the deepest a BIP341 script tree can be.
+    MAX_DEPTH = 128
+
     # Check whether +data+ is hex string or not.
     # An odd-length string is not a hex string. Treating it as one would let
     # +pack('H*')+ pad the missing nibble with zero, so 'abc' and 'abc0' would
@@ -20,7 +25,11 @@ module Merkle
     # @param [String] hex
     # @return [Boolean]
     def node_hash?(hex)
-      hex.is_a?(String) && hex.length == HASH_SIZE * 2 && hex.match?(/\A[0-9a-fA-F]+\z/)
+      return false unless hex.is_a?(String)
+      # Match on the bytes. Matching the string itself raises on a value that claims to be UTF-8
+      # but holds invalid bytes, which would surface as an unrelated ArgumentError.
+      bytes = hex.b
+      bytes.bytesize == HASH_SIZE * 2 && bytes.match?(/\A[0-9a-fA-F]+\z/)
     end
 
     # Convert a node hash from its hex representation to binary.
