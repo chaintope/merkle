@@ -34,6 +34,13 @@ RSpec.describe Merkle::Proof do
           .to raise_error(ArgumentError, "siblings must not exceed #{Merkle::Proof::MAX_SIBLINGS} elements")
       end
 
+      it 'accepts a proof as deep as a BIP341 script tree can be' do
+        # A control block carries at most 128 path elements.
+        expect(Merkle::Proof::MAX_SIBLINGS).to eq(128)
+        siblings = ['00' * 32] * 128
+        expect { described_class.new(**args.merge(siblings: siblings)) }.not_to raise_error
+      end
+
       it 'rejects directions' do
         expect { described_class.new(**args.merge(directions: [0, 1])) }
           .to raise_error(ArgumentError, 'No directions are required because sorted_hash is enabled')
