@@ -229,3 +229,17 @@ untagged and your roots were not BIP341 script trees. They are now, which change
 
 Leaves are now always 64-character hex strings. If you were passing binary digests
 (`config.tagged_hash(...)`) as leaves, append `.unpack1('H*')`.
+
+**`Config#tagged_hash` is the one change that does not announce itself.** It now hashes its
+argument as bytes instead of decoding it when it looks like hex, so a direct call keeps working
+and returns a different digest:
+
+```ruby
+config.tagged_hash('deadbeef')                          # 0.4.0: hashed 4 bytes
+config.tagged_hash(config.encode_element('deadbeef'))   # 1.0.0: same 4 bytes, with :hex
+```
+
+Everything reached through `.from_elements` already goes through `encode_element`, so this only
+affects code that calls `tagged_hash` itself — typically to precompute leaves for `.new`. Audit
+those call sites: wrap the argument in `encode_element` to keep the old digest, or leave it bare
+if you were passing raw bytes all along.
