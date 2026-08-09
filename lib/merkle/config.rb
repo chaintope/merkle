@@ -17,24 +17,29 @@ module Merkle
     # earlier, which also padded odd-length hex ('abc' and 'abc0' shared a leaf there).
     ELEMENT_ENCODINGS = [:hex, :binary, :auto]
 
-    attr_reader :hash_type, :branch_tag, :sort_hashes, :element_encoding
+    attr_reader :hash_type, :leaf_tag, :branch_tag, :sort_hashes, :element_encoding
 
     # Constructor
     # @param [Symbol] element_encoding How elements are interpreted, :hex, :binary or :auto.
     # This has no default on purpose. Guessing it silently changes the merkle root.
     # See ELEMENT_ENCODINGS before reaching for :auto.
     # @param [Symbol] hash_type The hashing algorithm used to hash the internal nodes.
+    # @param [String] leaf_tag Tag to use when hashing leaves.
+    # Give this and +branch_tag+ different values so that a leaf hash can never equal an internal
+    # node hash. With both left empty the tree is not second-preimage resistant.
     # @param [String] branch_tag Tags to use when hashing internal nodes.
     # @param [Boolean] sort_hashes Whether to sort internal nodes in lexicographical order and hash them.
     # If you enable this, Merkle::Proof's directions are not required.
     # @raise [ArgumentError]
-    def initialize(element_encoding:, hash_type: :sha256, branch_tag: '', sort_hashes: true)
+    def initialize(element_encoding:, hash_type: :sha256, leaf_tag: '', branch_tag: '', sort_hashes: true)
       raise ArgumentError, "element_encoding #{element_encoding} does not supported." unless ELEMENT_ENCODINGS.include?(element_encoding)
       raise ArgumentError, "hash_type #{hash_type} does not supported." unless HASH_TYPES.include?(hash_type)
+      raise ArgumentError, "leaf_tag must be string." unless leaf_tag.is_a?(String)
       raise ArgumentError, "internal_tag must be string." unless branch_tag.is_a?(String)
       raise ArgumentError, "sort_hashes must be boolean." unless sort_hashes.is_a?(TrueClass) || sort_hashes.is_a?(FalseClass)
       @element_encoding = element_encoding
       @hash_type = hash_type
+      @leaf_tag = leaf_tag
       @branch_tag = branch_tag
       @sort_hashes = sort_hashes
     end
@@ -50,7 +55,7 @@ module Merkle
     # @param [Symbol] element_encoding How elements are interpreted, :hex, :binary or :auto.
     # @return [Merkle::Config]
     def self.taptree(element_encoding:)
-      Config.new(element_encoding: element_encoding, branch_tag: 'TapBranch')
+      Config.new(element_encoding: element_encoding, leaf_tag: 'TapLeaf', branch_tag: 'TapBranch')
     end
 
     # Convert +element+ into the byte string to be hashed, following element_encoding.

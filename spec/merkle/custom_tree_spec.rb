@@ -189,7 +189,8 @@ RSpec.describe Merkle::CustomTree do
     it 'uses leaf tag when hashing' do
       tag = 'test_tag'
       nested_elements = ['A', ['B', 'C']]
-      tree = described_class.from_elements(config: config, elements: nested_elements, leaf_tag: tag)
+      tagged = Merkle::Config.new(element_encoding: :binary, hash_type: :sha256, sort_hashes: false, leaf_tag: tag)
+      tree = described_class.from_elements(config: tagged, elements: nested_elements)
       
       expect(tree.leaves[0]).to eq(config.tagged_hash('A', tag).unpack1('H*'))
       expect(tree.leaves[1][0]).to eq(config.tagged_hash('B', tag).unpack1('H*'))
@@ -231,6 +232,7 @@ RSpec.describe Merkle::CustomTree do
 
   describe 'example usage' do
     let(:leaf_tag) { 'user' }
+    let(:config) { Merkle::Config.new(element_encoding: :binary, hash_type: :sha256, sort_hashes: false, leaf_tag: leaf_tag) }
     it 'demonstrates creating a custom tree structure' do
       # Create elements
       elements = %w[Alice Bob Charlie David Eve Frank]
@@ -239,11 +241,7 @@ RSpec.describe Merkle::CustomTree do
       nested_elements = [[[elements[0], [elements[1], elements[2]]], [elements[3], elements[4]]], elements[5]]
       
       # Create tree
-      tree = Merkle::CustomTree.from_elements(
-        config: config,
-        elements: nested_elements,
-        leaf_tag: leaf_tag
-      )
+      tree = Merkle::CustomTree.from_elements(config: config, elements: nested_elements)
       
       # Compute root
       root = tree.compute_root

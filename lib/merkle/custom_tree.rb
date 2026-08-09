@@ -14,15 +14,14 @@ module Merkle
     # Create tree from elements with custom structure
     # @param [Merkle::Config] config Configuration for merkle tree.
     # @param [Array] elements A nested array of elements that will be hashed to become leaves.
-    # @param [String] leaf_tag An optional tag to use when computing the leaf hash.
-    def self.from_elements(config:, elements:, leaf_tag: '')
+    # The tag used for the leaf hash comes from +config.leaf_tag+.
+    def self.from_elements(config:, elements:)
       raise ArgumentError, 'config must be Merkle::Config' unless config.is_a?(Merkle::Config)
       raise ArgumentError, 'elements must be Array' unless elements.is_a?(Array)
-      raise ArgumentError, 'leaf_tag must be string' unless leaf_tag.is_a?(String)
-      
+
       # Convert elements to hashes while preserving structure
-      hashed_structure = convert_elements_to_hashes(elements, config, leaf_tag)
-      
+      hashed_structure = convert_elements_to_hashes(elements, config)
+
       self.new(config: config, leaves: hashed_structure)
     end
 
@@ -36,12 +35,12 @@ module Merkle
     end
 
     # Convert nested elements to nested hashes
-    def self.convert_elements_to_hashes(node, config, leaf_tag)
+    def self.convert_elements_to_hashes(node, config)
       if node.is_a?(Array)
-        node.map { |child| convert_elements_to_hashes(child, config, leaf_tag) }
+        node.map { |child| convert_elements_to_hashes(child, config) }
       else
         # This is a leaf element, hash it and convert to hex
-        config.tagged_hash(config.encode_element(node), leaf_tag).unpack1('H*')
+        config.tagged_hash(config.encode_element(node), config.leaf_tag).unpack1('H*')
       end
     end
 

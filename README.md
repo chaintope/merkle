@@ -79,12 +79,12 @@ tree = Merkle::BinaryTree.from_elements(
 root = tree.compute_root
 puts "Root from elements: #{root}"
 
-# With optional leaf tag for tagged hashing (e.g., Taproot)
+# Tags live on the config, so leaves and branches cannot drift apart.
+# Config.taptree carries leaf_tag: 'TapLeaf' and branch_tag: 'TapBranch'.
 taproot_config = Merkle::Config.taptree(element_encoding: :binary)
 tagged_tree = Merkle::AdaptiveTree.from_elements(
   config: taproot_config,
-  elements: elements,
-  leaf_tag: 'TapLeaf'  # Optional tag for leaf hashing
+  elements: elements
 )
 
 # Generate and verify proof
@@ -180,7 +180,7 @@ is_valid = proof.valid? # Returns true/false
 around that value:
 
 ```ruby
-leaf = config.tagged_hash(config.encode_element(my_data), 'MyLeaf').unpack1('H*')
+leaf = config.tagged_hash(config.encode_element(my_data), config.leaf_tag).unpack1('H*')
 proof = Merkle::Proof.new(config: config, root: trusted_root, leaf: leaf,
                           siblings: received_siblings, directions: received_directions)
 proof.valid?
@@ -198,8 +198,7 @@ protocol built on top of it:
 - **Domain separation.** Give `leaf_tag` and `branch_tag` different values so that a leaf hash
   can never equal an internal node hash. With both left empty, an attacker can craft an element
   whose leaf hash equals an internal node and prove membership of something that was never in
-  the tree. `Config.taptree` sets `branch_tag`, but the leaf tag is yours to pass to
-  `.from_elements`.
+  the tree. `Config.taptree` sets both for you.
 - **Duplicate leaves (CVE-2012-2459).** `BinaryTree` duplicates the last node when a level holds
   an odd number of them, exactly as Bitcoin does, so `[a, b, c]` and `[a, b, c, c]` share a root.
   Use `AdaptiveTree` or `CustomTree` if you do not need Bitcoin compatibility.
@@ -222,6 +221,11 @@ value that matches what you were already passing to `.from_elements`:
 `'68656c6c6f'` share a leaf under it, and so do `'AB'` and `'ab'`. Use it to keep verifying roots
 you already committed to, not for a new protocol. It reproduces 0.4.0; 0.3.1 and earlier also
 padded odd-length hex, so `'abc'` and `'abc0'` shared a leaf there and no mode reproduces that.
+
+`leaf_tag` moved from `.from_elements` to `Config`, next to `branch_tag`, so a protocol's tag
+spec lives in one place. Pass it to `Config.new` instead. `Config.taptree` now sets
+`leaf_tag: 'TapLeaf'` itself: if you were calling it without passing a leaf tag, your leaves were
+untagged and your roots were not BIP341 script trees. They are now, which changes those roots.
 
 Leaves are now always 64-character hex strings. If you were passing binary digests
 (`config.tagged_hash(...)`) as leaves, append `.unpack1('H*')`.

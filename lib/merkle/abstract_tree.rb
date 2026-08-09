@@ -24,13 +24,12 @@ module Merkle
     # The resulting leaves are hex strings, the same representation as leaves passed to #initialize.
     # @param [Merkle::Config] config Configuration for merkle tree.
     # @param [Array] elements An array of element that will be hashed to become leaves.
-    # @param [String] leaf_tag An optional tag to use when computing the leaf hash.
-    def self.from_elements(config:, elements:, leaf_tag: '')
+    # The tag used for the leaf hash comes from +config.leaf_tag+.
+    def self.from_elements(config:, elements:)
       raise ArgumentError, 'config must be Merkle::Config' unless config.is_a?(Merkle::Config)
       raise ArgumentError, 'elements must be Array' unless elements.is_a?(Array)
-      raise ArgumentError, 'leaf_tag must be string' unless leaf_tag.is_a?(String)
       leaves = elements.map do |element|
-        config.tagged_hash(config.encode_element(element), leaf_tag).unpack1('H*')
+        config.tagged_hash(config.encode_element(element), config.leaf_tag).unpack1('H*')
       end
       self.new(config: config, leaves: leaves)
     end

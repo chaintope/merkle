@@ -17,6 +17,18 @@ RSpec.describe Merkle::Config do
       expect(described_class.bitcoin(element_encoding: :hex).hash_type).to eq(:double_sha256)
       expect(described_class.taptree(element_encoding: :hex).branch_tag).to eq('TapBranch')
     end
+
+    it 'carries the tag spec on the config, next to branch_tag' do
+      expect(described_class.bitcoin(element_encoding: :hex).leaf_tag).to eq('')
+      taptree = described_class.taptree(element_encoding: :hex)
+      expect(taptree.leaf_tag).to eq('TapLeaf')
+      expect(taptree.branch_tag).to eq('TapBranch')
+    end
+
+    it 'rejects a non-string leaf_tag' do
+      expect { described_class.new(element_encoding: :hex, leaf_tag: :TapLeaf) }
+        .to raise_error(ArgumentError, 'leaf_tag must be string.')
+    end
   end
 
   describe '#encode_element' do
